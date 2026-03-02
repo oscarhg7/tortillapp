@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Seleccionar ubicación · TortillApp</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui;
+      color: white;
+      background: #0f172a;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    .instructions {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30, 41, 59, 0.9);
+      padding: 10px 20px;
+      border-radius: 10px;
+      z-index: 1000;
+      text-align: center;
+      font-size: 1rem;
+    }
+
+    button {
+      margin-top: 5px;
+      background: #f59e0b;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #d97706;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+<div class="instructions">
+  📍 Haz clic en el mapa para seleccionar la ubicación.
+  <br>
+  <button onclick="confirmLocation()">Confirmar ubicación</button>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  let selectedLatLng = null;
+
+  // Crear mapa centrado en España
+  const map = L.map('map').setView([40.4168, -3.7038], 6);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  let marker = null;
+
+  // Al hacer click en el mapa, colocar marcador
+  map.on('click', function(e) {
+    selectedLatLng = e.latlng;
+    if (marker) {
+      marker.setLatLng(e.latlng);
+    } else {
+      marker = L.marker(e.latlng).addTo(map);
+    }
+  });
+
+  // Confirmar y pasar coordenadas a ventana principal
+  function confirmLocation() {
+    if (!selectedLatLng) {
+      alert("Selecciona primero una ubicación en el mapa.");
+      return;
+    }
+
+    if (window.opener && !window.opener.closed) {
+      // Pasa las coordenadas en formato lat,lon
+      const coords = selectedLatLng.lat.toFixed(6) + ',' + selectedLatLng.lng.toFixed(6);
+      // Llama a la función definida en index.html
+      window.opener.locationChanged(coords, "Ubicación seleccionada");
+      window.close();
+    } else {
+      alert("No se pudo pasar la ubicación. Abre el formulario desde la ventana principal.");
+    }
+  }
+</script>
+
+</body>
+</html>

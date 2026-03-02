@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>TortillApp 🥔</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body { background:#0f172a; font-family:system-ui; color:white; padding-bottom:80px; }
+    h2 { color:#facc15; font-weight:700; }
+    .card { background:#1e293b; border:none; border-radius:20px; padding:20px; margin-bottom:20px; color:white; }
+    .btn-primary { background:#f59e0b; border:none; }
+    .btn-primary:hover { background:#d97706; }
+    input, textarea { background:#334155 !important; border:none !important; color:white !important; }
+    input::placeholder, textarea::placeholder { color:#cbd5e1 !important; }
+    .menu-bottom { position:fixed; bottom:0; left:0; right:0; background:#111827; display:flex; justify-content:space-around; padding:12px 0; border-top:1px solid #334155; font-size:1.4rem; }
+    .menu-bottom a { color:white; text-decoration:none; cursor:pointer; }
+    .section { display:none; margin-bottom:100px; }
+    .section.active { display:block; }
+    .like-btn { cursor:pointer; user-select:none; color:#f87171; }
+  </style>
+</head>
+<body>
+
+<div class="container py-4">
+  <h2 class="text-center mb-4">🥔 TortillApp</h2>
+
+  <!-- ================= FEED ================= -->
+  <div id="feed" class="section active">
+    {% if tortillas %}
+      {% for tortilla in tortillas %}
+      <div class="card">
+        <h4>{{ tortilla.name }}</h4>
+        {% if tortilla.photo %}
+          <img src="{{ tortilla.photo }}" class="img-fluid mb-2" style="border-radius:10px;">
+        {% endif %}
+        <p>💶 {{ "%.1f"|format(tortilla.price) }} €</p>
+        <p>⭐ Media: {{ tortilla.average_score() }}</p>
+        <p>📝 Valoraciones: {{ tortilla.ratings|length }}</p>
+        <p>Textura: {{ tortilla.ratings[-1].texture if tortilla.ratings else '-' }}</p>
+        <p>Sabor: {{ tortilla.ratings[-1].flavor if tortilla.ratings else '-' }}</p>
+        {% if tortilla.location %}
+          <p>📍 {{ tortilla.location }}</p>
+        {% endif %}
+        <span class="like-btn" onclick="like({{ tortilla.id }})">
+          ❤️ <span id="likes-{{ tortilla.id }}">{{ tortilla.likes|length }}</span>
+        </span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="card text-center">No hay tortillas todavía. ¡Añade una!</div>
+    {% endif %}
+  </div>
+
+  <!-- ================= FORMULARIO ================= -->
+  <div id="add" class="section">
+    <div class="card">
+      <h4 class="mb-3">Añadir tortilla</h4>
+      <form method="POST" enctype="multipart/form-data">
+        <input name="name" class="form-control mb-2" placeholder="Nombre del sitio" required>
+        <input name="price" type="number" step="0.01" class="form-control mb-2" placeholder="Precio (€)" required>
+        
+        <!-- UBICACIÓN justo antes del botón -->
+        <input id="location" name="location" class="form-control mb-2" placeholder="Latitud,Longitud (opcional)">
+        <input id="location_label" class="form-control mb-2" placeholder="Dirección (opcional)" readonly>
+        <input type="hidden" id="location_label_hidden" name="location_label">
+
+        <input name="flavor" type="number" min="1" max="5" class="form-control mb-2" placeholder="Sabor (1-5)" required>
+        <input name="texture" type="number" min="1" max="5" class="form-control mb-2" placeholder="Textura (1-5)" required>
+        <textarea name="comment" class="form-control mb-2" placeholder="Comentario"></textarea>
+        <input type="file" name="photo" class="form-control mb-3">
+
+        <button type="button" class="btn btn-secondary mb-3"
+          onclick="window.open('{{ url_for('select_location') }}', 'Mapa', 'width=800,height=600')">
+          🗺 Seleccionar en mapa
+        </button>
+        <button type="submit" class="btn btn-primary w-100">Publicar tortilla</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MENÚ INFERIOR ================= -->
+<div class="menu-bottom">
+  <a onclick="show('feed')">🏠</a>
+  <a onclick="show('add')">➕</a>
+  <a href="{{ url_for('ranking') }}">🏆</a>
+  <a href="{{ url_for('profile', id=session['user_id']) }}">👤</a>
+  <a href="{{ url_for('logout') }}">🚪</a>
+</div>
+
+<!-- ================= SCRIPTS ================= -->
+<script>
+function show(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function like(id){
+  fetch("/like/" + id, { method:"POST" })
+    .then(r=>r.json())
+    .then(d=>document.getElementById("likes-"+id).innerText = d.likes);
+}
+
+window.locationChanged = function(coords, label){
+  document.getElementById('location').value = coords;
+  document.getElementById('location_label').value = label;
+  document.getElementById('location_label_hidden').value = label;
+}
+</script>
+
+</body>
+</html>
