@@ -1,5 +1,7 @@
 Flask==2.3.2
 Flask-SQLAlchemy==3.1.1
+Werkzeug==2.3.7
 cloudinary==1.44.1
+psycopg2-binary==2.9.11
+gunicorn==25.1.0
 requests==2.31.0
-validators==0.20.0

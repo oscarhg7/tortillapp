@@ -1,89 +1,178 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Ranking · TortillApp</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<style>
-body { background: linear-gradient(180deg, #0f172a, #020617); font-family:system-ui; color:white; padding-bottom:100px; }
-h2 { color:#facc15; font-weight:700; }
-.card { background:#1e293b; border:none; border-radius:20px; padding:15px; margin-bottom:20px; transition: transform 0.2s ease; color:white; }
-.card:hover { transform: scale(1.02); }
-.rank-number { font-size: 1.8rem; font-weight: bold; }
-.gold { color: #facc15; }
-.silver { color: #cbd5e1; }
-.bronze { color: #d97706; }
-.score { font-size:1.5rem; font-weight:bold; }
-.likes { color:#f87171; font-weight:bold; }
-.menu-bottom { position:fixed; bottom:0; width:100%; background:#111827; display:flex; justify-content:space-around; padding:12px 0; border-top:1px solid #334155; font-size:1.4rem; }
-.menu-bottom a { color:white; text-decoration:none; }
-.place { color:#38bdf8; }
-img { max-width:100%; border-radius:15px; margin-top:5px; }
-</style>
-</head>
-<body>
+{% extends "base.html" %}
 
-<div class="container py-4">
-  <h2 class="text-center mb-4">🏆 Ranking de Tortillas</h2>
+{% block title %}Ranking - TortillApp{% endblock %}
 
-  {% if tortillas %}
-    {% for tortilla in tortillas %}
-    <div class="card">
-
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          {% if loop.index == 1 %}
-            <span class="rank-number gold">🥇</span>
-          {% elif loop.index == 2 %}
-            <span class="rank-number silver">🥈</span>
-          {% elif loop.index == 3 %}
-            <span class="rank-number bronze">🥉</span>
-          {% else %}
-            <span class="rank-number">#{{ loop.index }}</span>
-          {% endif %}
-          <span class="ms-2 h5">{{ tortilla.name }}</span>
-        </div>
-        <div class="score">⭐ {{ tortilla.average_score() }}</div>
-      </div>
-
-      {% if tortilla.photo %}
-        <img src="{{ url_for('uploaded_file', filename=tortilla.photo) }}">
-      {% endif %}
-
-      <p>💶 {{ "%.1f"|format(tortilla.price) }} €</p>
-      {% set ratings = tortilla.ratings %}
-      {% if ratings %}
-        {% set avg_flavor = (ratings|map(attribute='flavor')|sum / ratings|length)|round(1) %}
-        {% set avg_texture = (ratings|map(attribute='texture')|sum / ratings|length)|round(1) %}
-      {% else %}
-        {% set avg_flavor = 0 %}
-        {% set avg_texture = 0 %}
-      {% endif %}
-      <p>Sabor: {{ avg_flavor }} | Textura: {{ avg_texture }}</p>
-
-      {% if tortilla.location_label %}
-        <p>📍 <span class="place">{{ tortilla.location_label }}</span></p>
-      {% elif tortilla.latitude and tortilla.longitude %}
-        <p>📍 <span class="place">{{ tortilla.latitude }}, {{ tortilla.longitude }}</span></p>
-      {% elif tortilla.location %}
-        <p>📍 <span class="place">{{ tortilla.location }}</span></p>
-      {% endif %}
-
-      <p class="likes">❤️ {{ tortilla.likes|length }} likes</p>
+{% block content %}
+<div class="ranking-container">
+    <div class="feed-header">
+        <h2>🏆 Top 10 Tortillas</h2>
+        <p class="feed-subtitle">Las tortillas mejor valoradas</p>
     </div>
-    {% endfor %}
-  {% else %}
-    <p class="text-center">Todavía no hay tortillas en el ranking 😢</p>
-  {% endif %}
-</div>
 
-<div class="menu-bottom">
-  <a href="{{ url_for('home') }}">🏠</a>
-  <a onclick="window.open('{{ url_for('select_location') }}','Añadir','width=800,height=600')">➕</a>
-  <a href="{{ url_for('ranking') }}">🏆</a>
-  <a href="{{ url_for('profile', id=session['user_id']) }}">👤</a>
-  <a href="{{ url_for('logout') }}">🚪</a>
-</div>
+    {% if tortillas %}
+    <div class="ranking-map-wrapper card">
+        <p class="map-label">📍 Mapa de las mejores tortillas</p>
+        <div id="ranking-map"></div>
+        <p class="map-hint" id="map-hint" style="display:none">Cargando ubicaciones…</p>
+    </div>
+    {% endif %}
 
-</body>
-</html>
+    {% if tortillas %}
+    <div class="tortillas-grid">
+        {% for tortilla in tortillas %}
+        <article class="card tortilla-card">
+            <div class="card-header">
+                <h4 class="tortilla-name">
+                    {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}#{{ loop.index }}{% endif %}
+                    {{ tortilla.name }}
+                </h4>
+                <span class="tortilla-score">⭐ {{ "%.1f"|format(tortilla.average_score()) }}</span>
+            </div>
+
+            {% if tortilla.photo %}
+            <div class="tortilla-image-container">
+                <img src="{{ tortilla.photo if tortilla.photo.startswith('http') else url_for('static', filename='uploads/' + tortilla.photo) }}" alt="{{ tortilla.name }}" loading="lazy">
+            </div>
+            {% else %}
+            <div class="tortilla-image-placeholder">
+                <div class="placeholder-content">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="42" height="42" aria-hidden="true">
+                        <defs>
+                            <radialGradient id="rg" cx="38%" cy="32%" r="70%">
+                                <stop offset="0%"   stop-color="#fff4a0"/>
+                                <stop offset="45%"  stop-color="#FFD700"/>
+                                <stop offset="100%" stop-color="#b45309"/>
+                            </radialGradient>
+                            <radialGradient id="rh" cx="42%" cy="36%" r="48%">
+                                <stop offset="0%"   stop-color="rgba(255,255,255,0.4)"/>
+                                <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+                            </radialGradient>
+                        </defs>
+                        <circle cx="24" cy="24" r="23" fill="#92400e" opacity="0.7"/>
+                        <circle cx="24" cy="24" r="21" fill="url(#rg)"/>
+                        <circle cx="24" cy="24" r="21" fill="url(#rh)"/>
+                        <circle cx="24" cy="24" r="14.5" fill="none" stroke="#b45309" stroke-width="1.2" opacity="0.38"/>
+                        <circle cx="24" cy="24" r="7.5"  fill="none" stroke="#b45309" stroke-width="1"   opacity="0.28"/>
+                        <ellipse cx="21" cy="27" rx="3.2" ry="2.2" fill="#d97706" opacity="0.45" transform="rotate(-12 21 27)"/>
+                        <ellipse cx="30" cy="22" rx="2.5" ry="1.8" fill="#d97706" opacity="0.38" transform="rotate(18 30 22)"/>
+                        <ellipse cx="26" cy="32" rx="2.2" ry="1.6" fill="#d97706" opacity="0.35" transform="rotate(5 26 32)"/>
+                        <circle cx="24" cy="24" r="3" fill="#d97706" opacity="0.5"/>
+                    </svg>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="tortilla-info">
+                {% if tortilla.price %}
+                <div class="info-item">
+                    <span class="info-label">💰 Precio</span>
+                    <span class="info-value">{{ "%.2f"|format(tortilla.price) }} €</span>
+                </div>
+                {% endif %}
+
+                <div class="info-item">
+                    <span class="info-label">📝 Valoraciones</span>
+                    <span class="info-value">{{ tortilla.ratings|length }}</span>
+                </div>
+
+                {% if tortilla.location %}
+                <div class="info-item">
+                    <span class="info-label">📍 Ubicación</span>
+                    <a href="https://www.google.com/maps/search/{{ tortilla.location | urlencode }}"
+                       target="_blank" class="location-link">
+                        {{ tortilla.location }}
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="card-actions">
+                <button class="like-btn" onclick="like({{ tortilla.id }})" title="Me gusta">
+                    ❤️ <span id="likes-{{ tortilla.id }}">{{ tortilla.likes|length }}</span>
+                </button>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">🌯</div>
+        <h3>Sin tortillas aún</h3>
+        <p>Sé el primero en añadir una tortilla y valorarla 😋</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if tortillas %}
+<script>
+(function() {
+    const mapData = {{ map_data | safe }};
+    const medals = ['🥇','🥈','🥉'];
+
+    const map = L.map('ranking-map', { zoomControl: true, scrollWheelZoom: false }).setView([40.0, -3.7], 6);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>',
+        maxZoom: 18
+    }).addTo(map);
+
+    const bounds = [];
+
+    function addMarker(t) {
+        const label = medals[t.rank - 1] || t.rank;
+        const icon = L.divIcon({
+            className: '',
+            html: `<div class="map-marker">${label}</div>`,
+            iconSize: [38, 38],
+            iconAnchor: [19, 19],
+            popupAnchor: [0, -22]
+        });
+        L.marker([t.lat, t.lng], { icon: icon })
+         .addTo(map)
+         .bindPopup(`<div class="map-popup"><strong>${label} ${t.name}</strong><br>⭐ ${t.score}${t.location ? '<br><small>' + t.location + '</small>' : ''}</div>`);
+        bounds.push([t.lat, t.lng]);
+        if (bounds.length > 1) {
+            map.fitBounds(bounds, { padding: [40, 40] });
+        } else {
+            map.setView([t.lat, t.lng], 12);
+        }
+    }
+
+    function geocodeSequential(list, index) {
+        if (index >= list.length) {
+            document.getElementById('map-hint').style.display = 'none';
+            return;
+        }
+        const t = list[index];
+        setTimeout(function() {
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(t.location)}&limit=1`, {
+                headers: { 'Accept-Language': 'es' }
+            })
+            .then(r => r.json())
+            .then(results => {
+                if (results.length > 0) {
+                    t.lat = parseFloat(results[0].lat);
+                    t.lng = parseFloat(results[0].lon);
+                    addMarker(t);
+                }
+            })
+            .catch(() => {})
+            .finally(() => geocodeSequential(list, index + 1));
+        }, index === 0 ? 0 : 1100);
+    }
+
+    const withCoords   = mapData.filter(t => t.lat && t.lng);
+    const needsGeocode = mapData.filter(t => !t.lat || !t.lng);
+
+    withCoords.forEach(addMarker);
+
+    if (needsGeocode.length > 0) {
+        document.getElementById('map-hint').style.display = 'block';
+        geocodeSequential(needsGeocode, 0);
+    }
+})();
+</script>
+{% endif %}
+{% endblock %}

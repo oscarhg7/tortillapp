@@ -1,0 +1,6 @@
+<div class="menu-bottom">
+  <a href="{{ url_for('home') }}" aria-label="Inicio">🏠 Inicio</a>
+  <a href="#" onclick="goToAdd(); return false;" aria-label="Añadir">➕ Añadir</a>
+  <a href="{{ url_for('ranking') }}" aria-label="Ranking">🏆 Ranking</a>
+  <a href="{{ url_for('profile', user_id=session.get('user_id')) }}" aria-label="Perfil">👤 Perfil</a>
+</div>

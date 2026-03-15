@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Error 404 - TortillApp{% endblock %}
+
+{% block content %}
+<div class="error-container">
+  <div class="card" style="max-width: 500px; margin: 60px auto; text-align: center; padding: 40px;">
+    <div style="font-size: 4rem; margin-bottom: 20px;">🥔</div>
+    <h1 style="color: #FFD700; margin-bottom: 15px;">Error 404</h1>
+    <p style="color: #cbd5e1; font-size: 1.1rem; margin-bottom: 20px;">
+      Página no encontrada
+    </p>
+    <p style="color: #64748b; margin-bottom: 30px;">
+      La página que buscas no existe. Quizá se perdió entre las tortillas 🌯
+    </p>
+    <a href="{{ url_for('home') }}" style="
+      display: inline-block;
+      background-color: #2563eb;
+      color: white;
+      padding: 12px 30px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background-color 0.3s ease;
+    " onmouseover="this.style.backgroundColor='#1d4ed8'" onmouseout="this.style.backgroundColor='#2563eb'">
+      ← Volver al inicio
+    </a>
+  </div>
+</div>
+{% endblock %}

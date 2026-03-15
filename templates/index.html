@@ -1,113 +1,356 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>TortillApp 🥔</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+{% extends "base.html" %}
 
-  <style>
-    body { background:#0f172a; font-family:system-ui; color:white; padding-bottom:80px; }
-    h2 { color:#facc15; font-weight:700; }
-    .card { background:#1e293b; border:none; border-radius:20px; padding:20px; margin-bottom:20px; color:white; }
-    .btn-primary { background:#f59e0b; border:none; }
-    .btn-primary:hover { background:#d97706; }
-    input, textarea { background:#334155 !important; border:none !important; color:white !important; }
-    input::placeholder, textarea::placeholder { color:#cbd5e1 !important; }
-    .menu-bottom { position:fixed; bottom:0; left:0; right:0; background:#111827; display:flex; justify-content:space-around; padding:12px 0; border-top:1px solid #334155; font-size:1.4rem; }
-    .menu-bottom a { color:white; text-decoration:none; cursor:pointer; }
-    .section { display:none; margin-bottom:100px; }
-    .section.active { display:block; }
-    .like-btn { cursor:pointer; user-select:none; color:#f87171; }
-  </style>
-</head>
-<body>
+{% block title %}TortillApp - Feed{% endblock %}
 
-<div class="container py-4">
-  <h2 class="text-center mb-4">🥔 TortillApp</h2>
+{% block content %}
 
-  <!-- ================= FEED ================= -->
-  <div id="feed" class="section active">
-    {% if tortillas %}
+<!-- FEED SECTION -->
+<section id="feed" class="section active">
+  <div class="feed-header" style="display: block; margin-bottom: 30px;">
+    <h2 style="font-size: 2rem; color: #FFD700; margin-bottom: 10px; margin-top: 0;">🏠 Feed de Tortillas</h2>
+    <p class="feed-subtitle" style="color: #cbd5e1; font-size: 1rem; margin: 0;">Descubre las mejores tortillas valoradas por la comunidad</p>
+  </div>
+
+  {% if tortillas %}
+    <div class="tortillas-grid">
       {% for tortilla in tortillas %}
-      <div class="card">
-        <h4>{{ tortilla.name }}</h4>
-        {% if tortilla.photo %}
-          <img src="{{ tortilla.photo }}" class="img-fluid mb-2" style="border-radius:10px;">
+      <article class="card tortilla-card">
+        <!-- Encabezado de la tarjeta -->
+        <div class="card-header">
+          <h4 class="tortilla-name">{{ tortilla.name }}</h4>
+          <span class="tortilla-score" title="Puntuación promedio">
+            ⭐ {{ name_stats[tortilla.name_normalized].avg }}
+          </span>
+        </div>
+
+        <!-- Carrusel de fotos -->
+        {% set photos = name_photos[tortilla.name_normalized] %}
+        {% if photos %}
+        <div class="photo-carousel" id="carousel-{{ tortilla.id }}">
+          <div class="carousel-track">
+            {% for photo in photos %}
+            <div class="carousel-slide">
+              <img src="{{ photo if photo.startswith('http') else url_for('static', filename='uploads/' + photo) }}"
+                   alt="Imagen de {{ tortilla.name }}" loading="lazy">
+            </div>
+            {% endfor %}
+          </div>
+          {% if photos|length > 1 %}
+          <div class="carousel-dots">
+            {% for photo in photos %}
+            <span class="carousel-dot{% if loop.first %} active{% endif %}"
+                  data-index="{{ loop.index0 }}"
+                  data-carousel="{{ tortilla.id }}"></span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="tortilla-image-placeholder">
+          <div class="placeholder-content">
+            <svg class="placeholder-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="42" height="42" aria-hidden="true">
+              <defs>
+                <radialGradient id="pg" cx="38%" cy="32%" r="70%">
+                  <stop offset="0%"  stop-color="#fff4a0"/>
+                  <stop offset="45%" stop-color="#FFD700"/>
+                  <stop offset="100%" stop-color="#b45309"/>
+                </radialGradient>
+                <radialGradient id="ph" cx="42%" cy="36%" r="48%">
+                  <stop offset="0%"  stop-color="rgba(255,255,255,0.4)"/>
+                  <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+                </radialGradient>
+              </defs>
+              <circle cx="24" cy="24" r="23" fill="#92400e" opacity="0.7"/>
+              <circle cx="24" cy="24" r="21" fill="url(#pg)"/>
+              <circle cx="24" cy="24" r="21" fill="url(#ph)"/>
+              <circle cx="24" cy="24" r="14.5" fill="none" stroke="#b45309" stroke-width="1.2" opacity="0.38"/>
+              <circle cx="24" cy="24" r="7.5"  fill="none" stroke="#b45309" stroke-width="1"   opacity="0.28"/>
+              <ellipse cx="21" cy="27" rx="3.2" ry="2.2" fill="#d97706" opacity="0.45" transform="rotate(-12 21 27)"/>
+              <ellipse cx="30" cy="22" rx="2.5" ry="1.8" fill="#d97706" opacity="0.38" transform="rotate(18 30 22)"/>
+              <ellipse cx="26" cy="32" rx="2.2" ry="1.6" fill="#d97706" opacity="0.35" transform="rotate(5 26 32)"/>
+              <circle cx="24" cy="24" r="3" fill="#d97706" opacity="0.5"/>
+            </svg>
+            <p class="placeholder-msg">¿La has probado?</p>
+            <p class="placeholder-sub">Sé el primero en añadir una foto y valorarla</p>
+          </div>
+        </div>
         {% endif %}
-        <p>💶 {{ "%.1f"|format(tortilla.price) }} €</p>
-        <p>⭐ Media: {{ tortilla.average_score() }}</p>
-        <p>📝 Valoraciones: {{ tortilla.ratings|length }}</p>
-        <p>Textura: {{ tortilla.ratings[-1].texture if tortilla.ratings else '-' }}</p>
-        <p>Sabor: {{ tortilla.ratings[-1].flavor if tortilla.ratings else '-' }}</p>
-        {% if tortilla.location %}
-          <p>📍 {{ tortilla.location }}</p>
-        {% endif %}
-        <span class="like-btn" onclick="like({{ tortilla.id }})">
-          ❤️ <span id="likes-{{ tortilla.id }}">{{ tortilla.likes|length }}</span>
-        </span>
-      </div>
+
+        <!-- Información principal -->
+        <div class="tortilla-info">
+          <!-- Sabor y Textura en la misma línea -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="info-item">
+              <span class="info-label">Sabor</span>
+              <span class="info-value">{{ tortilla.ratings[0].flavor if tortilla.ratings else '—' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Textura</span>
+              <span class="info-value">{{ tortilla.ratings[0].texture if tortilla.ratings else '—' }}</span>
+            </div>
+          </div>
+
+          <!-- Precio -->
+          <div class="info-item">
+            <span class="info-label">Precio</span>
+            <span class="info-value">{% if tortilla.price %}💶 {{ "%.2f"|format(tortilla.price) }} €{% else %}—{% endif %}</span>
+          </div>
+
+          <!-- Ubicación con Google Maps -->
+          {% if tortilla.location %}
+          <div class="info-item">
+            <span class="info-label">Ubicación</span>
+            <a href="https://www.google.com/maps/search/{{ tortilla.location | urlencode }}" target="_blank" class="location-link" style="color: #38bdf8; text-decoration: none; font-weight: 600;">📍 {{ tortilla.location }}</a>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Acciones -->
+        <div class="card-actions">
+          <button 
+            class="like-btn" 
+            onclick="like({{ tortilla.id }})" 
+            aria-label="Me gusta esta tortilla"
+            title="Click para dar like">
+            ❤️ <span id="likes-{{ tortilla.id }}">{{ tortilla.likes|length }}</span>
+          </button>
+          <div class="card-meta">
+            <span class="meta-text">Subido por <strong>{{ tortilla.user.username }}</strong></span>
+            <span class="meta-date">📅 {{ tortilla.created_at.strftime("%d/%m/%Y") }} · {{ name_stats[tortilla.name_normalized].count }} valoraci{{ 'ón' if name_stats[tortilla.name_normalized].count == 1 else 'ones' }}</span>
+          </div>
+        </div>
+      </article>
       {% endfor %}
-    {% else %}
-      <div class="card text-center">No hay tortillas todavía. ¡Añade una!</div>
-    {% endif %}
-  </div>
-
-  <!-- ================= FORMULARIO ================= -->
-  <div id="add" class="section">
-    <div class="card">
-      <h4 class="mb-3">Añadir tortilla</h4>
-      <form method="POST" enctype="multipart/form-data">
-        <input name="name" class="form-control mb-2" placeholder="Nombre del sitio" required>
-        <input name="price" type="number" step="0.01" class="form-control mb-2" placeholder="Precio (€)" required>
-        
-        <!-- UBICACIÓN justo antes del botón -->
-        <input id="location" name="location" class="form-control mb-2" placeholder="Latitud,Longitud (opcional)">
-        <input id="location_label" class="form-control mb-2" placeholder="Dirección (opcional)" readonly>
-        <input type="hidden" id="location_label_hidden" name="location_label">
-
-        <input name="flavor" type="number" min="1" max="5" class="form-control mb-2" placeholder="Sabor (1-5)" required>
-        <input name="texture" type="number" min="1" max="5" class="form-control mb-2" placeholder="Textura (1-5)" required>
-        <textarea name="comment" class="form-control mb-2" placeholder="Comentario"></textarea>
-        <input type="file" name="photo" class="form-control mb-3">
-
-        <button type="button" class="btn btn-secondary mb-3"
-          onclick="window.open('{{ url_for('select_location') }}', 'Mapa', 'width=800,height=600')">
-          🗺 Seleccionar en mapa
-        </button>
-        <button type="submit" class="btn btn-primary w-100">Publicar tortilla</button>
-      </form>
     </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">🥔</div>
+    <h3>No hay tortillas aún</h3>
+    <p>Sé el primero en añadir una tortilla. ¡Haz click en "Añadir"!</p>
   </div>
-</div>
+  {% endif %}
+</section>
 
-<!-- ================= MENÚ INFERIOR ================= -->
-<div class="menu-bottom">
-  <a onclick="show('feed')">🏠</a>
-  <a onclick="show('add')">➕</a>
-  <a href="{{ url_for('ranking') }}">🏆</a>
-  <a href="{{ url_for('profile', id=session['user_id']) }}">👤</a>
-  <a href="{{ url_for('logout') }}">🚪</a>
-</div>
+<!-- ADD TORTILLA SECTION -->
+<section id="add" class="section">
+  <div class="form-header">
+    <h2>➕ Añadir Nueva Tortilla</h2>
+    <p class="form-subtitle">Comparte tu tortilla favorita con la comunidad</p>
+  </div>
 
-<!-- ================= SCRIPTS ================= -->
+  <article class="card form-card">
+    <form method="POST" enctype="multipart/form-data" class="tortilla-form" novalidate>
+      
+      <!-- Nombre -->
+      <div class="form-group">
+        <label for="name">Nombre de la tortilla <span class="required">*</span></label>
+        <input 
+          id="name" 
+          name="name" 
+          type="text"
+          class="form-control" 
+          placeholder="Ej: Tortilla de patatas clásica"
+          required
+          maxlength="100">
+        <small class="form-help">Campo obligatorio</small>
+      </div>
+
+      <!-- Valoraciones -->
+      <div class="form-group form-group-double">
+        <div class="form-sub-group">
+          <label for="sabor">Sabor <span class="required">*</span></label>
+          <div class="rating-input">
+            <input 
+              type="number" 
+              id="sabor" 
+              name="sabor" 
+              step="0.5" 
+              class="form-control" 
+              placeholder="0.5 - 5" 
+              min="0.5" 
+              max="5" 
+              value="3"
+              required>
+            <span class="rating-value" id="sabor-value">3</span>
+          </div>
+        </div>
+
+        <div class="form-sub-group">
+          <label for="textura">Textura <span class="required">*</span></label>
+          <div class="rating-input">
+            <input 
+              type="number" 
+              id="textura" 
+              name="textura" 
+              step="0.5" 
+              class="form-control" 
+              placeholder="0.5 - 5" 
+              min="0.5" 
+              max="5" 
+              value="3"
+              required>
+            <span class="rating-value" id="textura-value">3</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Precio -->
+      <div class="form-group">
+        <label for="price">Precio (€)</label>
+        <input 
+          type="number" 
+          id="price" 
+          name="price" 
+          step="0.01" 
+          class="form-control" 
+          placeholder="Ej: 3.50"
+          min="0"
+          value="0">
+        <small class="form-help">Deja en blanco o 0 si no quieres especificar precio</small>
+      </div>
+
+      <!-- Ubicación con autocomplete -->
+      <div class="form-group">
+        <label for="location">📍 Ubicación</label>
+        <div class="location-autocomplete">
+          <input 
+            type="text" 
+            id="location" 
+            name="location" 
+            class="form-control" 
+            placeholder="Escribe una calle, ciudad o zona... Ej: Calle Gran Vía 45, Madrid"
+            maxlength="200"
+            autocomplete="off">
+          <div id="location-suggestions" class="location-suggestions"></div>
+        </div>
+        <small class="form-help">Dirección donde probaste la tortilla (opcional)</small>
+      </div>
+
+      <!-- Comentario -->
+      <div class="form-group">
+        <label for="comment">Comentario</label>
+        <textarea 
+          id="comment" 
+          name="comment" 
+          class="form-control" 
+          placeholder="Escribe tu opinión sobre esta tortilla... (máximo 500 caracteres)"
+          maxlength="500"
+          rows="4"></textarea>
+        <small class="form-help"><span id="comment-count">0</span>/500</small>
+      </div>
+
+      <!-- Foto -->
+      <div class="form-group">
+        <label for="photo">📷 Foto de la tortilla</label>
+        <input 
+          id="photo" 
+          type="file" 
+          name="photo" 
+          class="form-control"
+          accept="image/png,image/jpeg,image/jpg,image/gif"
+          aria-description="Sube una foto de la tortilla (máximo 5MB)">
+        <small class="form-help">Formatos: JPG, PNG, GIF. Máximo 5MB (opcional)</small>
+      </div>
+
+      <input type="hidden" id="latitude" name="latitude">
+      <input type="hidden" id="longitude" name="longitude">
+
+      <!-- Botón de envío -->
+      <button type="submit" class="btn btn-success btn-large">
+        🚀 Publicar Tortilla
+      </button>
+      
+      <p class="form-note">Los campos marcados con <span class="required">*</span> son obligatorios</p>
+    </form>
+  </article>
+</section>
+
+<!-- Scripts adicionales -->
 <script>
-function show(id){
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+// ============ ABRIR BUSCADOR DE UBICACIÓN ============
+function openLocationSearch() {
+    window.open("{{ url_for('select_location') }}", "location_search", "width=600,height=800,scrollbars=yes");
 }
 
-function like(id){
-  fetch("/like/" + id, { method:"POST" })
-    .then(r=>r.json())
-    .then(d=>document.getElementById("likes-"+id).innerText = d.likes);
+// ============ FUNCIÓN DE LIKE (AJAX) ============
+function like(tortillaId) {
+    const url = `/like/${tortillaId}`;
+    fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}})
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) return alert(data.error);
+            document.getElementById(`likes-${tortillaId}`).textContent = data.likes;
+            const btn = event.target.closest('.like-btn');
+            if (btn) {
+                btn.classList.add('like-animation');
+                setTimeout(() => btn.classList.remove('like-animation'), 300);
+            }
+        })
+        .catch(e => {console.error(e); alert('Error al procesar el like');});
 }
 
-window.locationChanged = function(coords, label){
-  document.getElementById('location').value = coords;
-  document.getElementById('location_label').value = label;
-  document.getElementById('location_label_hidden').value = label;
-}
+// Inicializar event listeners solo cuando el formulario existe
+document.addEventListener('DOMContentLoaded', function() {
+    const commentEl = document.getElementById('comment');
+    const photoEl = document.getElementById('photo');
+    const saborEl = document.getElementById('sabor');
+    const texturaEl = document.getElementById('textura');
+    const formEl = document.querySelector('.tortilla-form');
+    
+    if (commentEl) {
+        commentEl.addEventListener('input', function() {
+            const countEl = document.getElementById('comment-count');
+            if (countEl) countEl.textContent = this.value.length;
+        });
+    }
+    
+    if (photoEl) {
+        photoEl.addEventListener('change', function() {
+            // Simplemente aceptamos el archivo seleccionado
+            console.log('Archivo seleccionado:', this.files[0]?.name);
+        });
+    }
+    
+    if (saborEl) {
+        saborEl.addEventListener('input', function() {
+            const valueEl = document.getElementById('sabor-value');
+            if (valueEl) valueEl.textContent = this.value;
+        });
+    }
+    
+    if (texturaEl) {
+        texturaEl.addEventListener('input', function() {
+            const valueEl = document.getElementById('textura-value');
+            if (valueEl) valueEl.textContent = this.value;
+        });
+    }
+    
+    if (formEl) {
+        formEl.addEventListener('submit', function(e) {
+            const name = document.getElementById('name')?.value?.trim();
+            const sabor = parseFloat(document.getElementById('sabor')?.value || 0);
+            const textura = parseFloat(document.getElementById('textura')?.value || 0);
+            
+            if (!name) {
+                e.preventDefault();
+                alert('Por favor, introduce el nombre de la tortilla');
+                return false;
+            }
+            
+            if (sabor < 0.5 || sabor > 5) {
+                e.preventDefault();
+                alert('La puntuación de sabor debe estar entre 0.5 y 5');
+                return false;
+            }
+            
+            if (textura < 0.5 || textura > 5) {
+                e.preventDefault();
+                alert('La puntuación de textura debe estar entre 0.5 y 5');
+                return false;
+            }
+        });
+    }
+});
 </script>
 
-</body>
-</html>
+{% endblock %}

@@ -1,75 +1,131 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Perfil · TortillApp</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+{% extends "base.html" %}
 
-<style>
-body { background:#0f172a; font-family:system-ui; color:white; padding-bottom:80px; }
-.card { background:#1e293b; border:none; border-radius:20px; padding:20px; margin-bottom:20px; color:white; }
-.stat { font-size:1.5rem; font-weight:bold; }
-.menu-bottom { position:fixed; bottom:0; left:0; right:0; background:#111827; display:flex; justify-content:space-around; padding:12px 0; border-top:1px solid #334155; font-size:1.4rem; }
-.menu-bottom a { color:white; text-decoration:none; }
-img { max-width:100%; border-radius:15px; margin-top:5px; }
-</style>
-</head>
-<body>
+{% block title %}Perfil - {{ user.username }} · TortillApp{% endblock %}
 
-<div class="container py-4">
-  <h2 class="text-center mb-4">👤 {{ user.username }}</h2>
+{% block content %}
 
-  <div class="card text-center">
-    <p class="stat">🥚 {{ total }}</p>
-    <p>Tortillas publicadas</p>
-    <p class="stat mt-3">⭐ {{ avg }}</p>
-    <p>Media personal</p>
-    <p class="stat mt-3">❤️ {{ likes }}</p>
-    <p>Likes recibidos</p>
+<section class="profile-section">
+  <!-- Header del perfil -->
+  <div class="profile-header">
+    <div class="profile-avatar">{{ user.username[0].upper() }}</div>
+    <div class="profile-info">
+      <h1 class="profile-username">{{ user.username }}</h1>
+      <p class="profile-joined">Miembro desde {{ user.created_at.strftime("%d de %B de %Y") }}</p>
+    </div>
   </div>
 
+  <!-- Estadísticas principales -->
+  <div class="profile-stats">
+    <div class="stat-card">
+      <div class="stat-icon">📝</div>
+      <div class="stat-content">
+        <p class="stat-label">Valoraciones</p>
+        <p class="stat-value">{{ total }}</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">⭐</div>
+      <div class="stat-content">
+        <p class="stat-label">Puntuación media</p>
+        <p class="stat-value">{{ avg }}</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">❤️</div>
+      <div class="stat-content">
+        <p class="stat-label">Likes recibidos</p>
+        <p class="stat-value">{{ likes }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mejor tortilla -->
   {% if best %}
-  <div class="card">
-    <h4>🏆 Mejor tortilla</h4>
-    <p><strong>{{ best.name }}</strong> – ⭐ {{ best.average_score() }}</p>
+  <div class="card best-tortilla">
+    <div class="best-tortilla-header">
+      <h3>🏆 Mejor valoración</h3>
+    </div>
+    
     {% if best.photo %}
-      <img src="{{ url_for('uploaded_file', filename=best.photo) }}">
+    <img 
+      src="{{ best.photo if best.photo.startswith('http') else url_for('static', filename='uploads/' + best.photo) }}"
+      class="best-tortilla-img" 
+      alt="Imagen de {{ best.name }}">
     {% endif %}
-    {% if best.location_label %}
-      <p>📍 {{ best.location_label }}</p>
-    {% elif best.latitude and best.longitude %}
-      <p>📍 {{ best.latitude }}, {{ best.longitude }}</p>
-    {% endif %}
-    <p>💶 {{ "%.2f"|format(best.price) }} €</p>
-    <p>📝 Valoraciones: {{ best.ratings|length }}</p>
-    <p>❤️ Likes: {{ best.likes|length }}</p>
+
+    <div class="best-tortilla-content">
+      <h4>{{ best.name }}</h4>
+      <p class="best-tortilla-score">⭐ {{ best.average_score() }}/5</p>
+      <p class="best-tortilla-detail">{{ best.ratings|length }} valoración(es)</p>
+      {% if best.price %}
+      <p class="best-tortilla-price">💶 {{ "%.2f"|format(best.price) }} €</p>
+      {% endif %}
+    </div>
   </div>
   {% endif %}
 
-  <div class="card">
-    <h4>📝 Valoraciones recientes</h4>
-    {% for r in ratings %}
-      <div class="p-2 mb-2" style="background:#334155; border-radius:10px;">
-        <p><strong>{{ r.user.username }}</strong> — ⭐ {{ ((r.flavor + r.texture)/2)|round(1) }}</p>
-        <p>Textura: {{ r.texture }} | Sabor: {{ r.flavor }}</p>
-        {% if r.comment %}
-          <p>“{{ r.comment }}”</p>
-        {% endif %}
-        <p><small>{{ r.created_at.strftime('%d/%m/%Y %H:%M') }}</small></p>
+  <!-- Sección de valoraciones -->
+  <div class="ratings-section">
+    <h2 class="section-title">📋 Mis valoraciones</h2>
+
+    {% if ratings %}
+      <div class="ratings-list">
+        {% for r in ratings %}
+        <article class="card rating-card">
+          <div class="rating-header">
+            <h4 class="rating-tortilla-name">{{ r.tortilla.name }}</h4>
+            <span class="rating-date">{{ r.created_at.strftime("%d/%m/%Y") }}</span>
+          </div>
+
+          <!-- Puntuación -->
+          <div class="rating-scores">
+            <div class="rating-item">
+              <span class="rating-label">Sabor</span>
+              <div class="score-bar">
+                <div class="score-fill" style="width: {{ (r.flavor / 5) * 100 }}%"></div>
+              </div>
+              <span class="score-value">{{ "%.1f"|format(r.flavor) }}/5</span>
+            </div>
+
+            <div class="rating-item">
+              <span class="rating-label">Textura</span>
+              <div class="score-bar">
+                <div class="score-fill" style="width: {{ (r.texture / 5) * 100 }}%"></div>
+              </div>
+              <span class="score-value">{{ "%.1f"|format(r.texture) }}/5</span>
+            </div>
+          </div>
+
+          <!-- Comentario -->
+          {% if r.comment %}
+          <div class="rating-comment">
+            <p class="comment-text">{{ r.comment }}</p>
+          </div>
+          {% endif %}
+
+          <!-- Información de la tortilla -->
+          <div class="rating-tortilla-info">
+            {% if r.tortilla.price %}
+            <span class="info-badge">💶 {{ "%.2f"|format(r.tortilla.price) }} €</span>
+            {% endif %}
+            <span class="info-badge">⭐ {{ r.total_score() }}/5</span>
+          </div>
+        </article>
+        {% endfor %}
       </div>
     {% else %}
-      <p class="text-muted">Aún no tienes valoraciones.</p>
-    {% endfor %}
+    <div class="empty-state">
+      <div class="empty-state-icon">📝</div>
+      <h3>Sin valoraciones aún</h3>
+      <p>Aún no has valorado ninguna tortilla</p>
+      <a href="{{ url_for('home') }}" onclick="showSection('feed'); return false;" class="btn btn-primary">
+        👉 Ir a valorar
+      </a>
+    </div>
+    {% endif %}
   </div>
+</section>
 
-</div>
-
-<div class="menu-bottom">
-  <a href="{{ url_for('home') }}">🏠</a>
-  <a href="{{ url_for('ranking') }}">🏆</a>
-  <a href="{{ url_for('profile', id=session['user_id']) }}">👤</a>
-  <a href="{{ url_for('logout') }}">🚪</a>
-</div>
-
-</body>
-</html>
+{% endblock %}

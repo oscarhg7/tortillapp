@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="TortillApp: La mejor app para valorar tortillas.">
+    <title>{% block title %}TortillApp{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><defs><radialGradient id='g' cx='38%25' cy='32%25' r='70%25'><stop offset='0%25' stop-color='%23fff4a0'/><stop offset='45%25' stop-color='%23FFD700'/><stop offset='100%25' stop-color='%23b45309'/></radialGradient></defs><circle cx='24' cy='24' r='23' fill='%2392400e'/><circle cx='24' cy='24' r='21' fill='url(%23g)'/><circle cx='24' cy='24' r='14' fill='none' stroke='%23b45309' stroke-width='1.5' opacity='0.4'/><circle cx='24' cy='24' r='7' fill='none' stroke='%23b45309' stroke-width='1' opacity='0.3'/><circle cx='24' cy='24' r='3.5' fill='%23d97706' opacity='0.6'/></svg>">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa/RxnatzjcDSCmG1MFxcer60DYn9262ZFtkMbylj6sXw" crossorigin="anonymous">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" crossorigin="anonymous">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <div class="app-title-wrapper">
+        <svg class="app-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" aria-hidden="true">
+            <defs>
+                <radialGradient id="tg" cx="38%" cy="32%" r="70%">
+                    <stop offset="0%"   stop-color="#fff4a0"/>
+                    <stop offset="45%"  stop-color="#FFD700"/>
+                    <stop offset="100%" stop-color="#b45309"/>
+                </radialGradient>
+                <radialGradient id="th" cx="42%" cy="36%" r="48%">
+                    <stop offset="0%"   stop-color="rgba(255,255,255,0.45)"/>
+                    <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+                </radialGradient>
+                <filter id="ts" x="-15%" y="-15%" width="130%" height="140%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#000" flood-opacity="0.55"/>
+                </filter>
+            </defs>
+            <!-- Outer crust -->
+            <circle cx="24" cy="24" r="23" fill="#92400e" filter="url(#ts)"/>
+            <!-- Tortilla surface -->
+            <circle cx="24" cy="24" r="21" fill="url(#tg)"/>
+            <!-- Shine -->
+            <circle cx="24" cy="24" r="21" fill="url(#th)"/>
+            <!-- Texture rings -->
+            <circle cx="24" cy="24" r="14.5" fill="none" stroke="#b45309" stroke-width="1.2" opacity="0.38"/>
+            <circle cx="24" cy="24" r="7.5"  fill="none" stroke="#b45309" stroke-width="1"   opacity="0.28"/>
+            <!-- Potato chunks -->
+            <ellipse cx="21" cy="27" rx="3.2" ry="2.2" fill="#d97706" opacity="0.45" transform="rotate(-12 21 27)"/>
+            <ellipse cx="30" cy="22" rx="2.5" ry="1.8" fill="#d97706" opacity="0.38" transform="rotate(18 30 22)"/>
+            <ellipse cx="26" cy="32" rx="2.2" ry="1.6" fill="#d97706" opacity="0.35" transform="rotate(5 26 32)"/>
+            <!-- Center highlight -->
+            <circle cx="24" cy="24" r="3" fill="#d97706" opacity="0.5"/>
+        </svg>
+        <h2 class="app-title">TortillApp</h2>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" role="alert">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}
+    {% endblock %}
+</div>
+
+<!-- MENÚ INFERIOR -->
+{% include 'menu.html' %}
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js" crossorigin="anonymous"></script>
+
+<!-- Custom JS -->
+<script src="{{ url_for('static', filename='main.js') }}" defer></script>
+
+<!-- Scripts específicos de página (se cargan después de Leaflet) -->
+{% block scripts %}{% endblock %}
+</body>
+</html>
