@@ -19,38 +19,54 @@
 
     {% if tortillas %}
     <div class="tortillas-grid">
-        {% for tortilla in tortillas %}
+        {% for g in tortillas %}
         <article class="card tortilla-card">
             <div class="card-header">
                 <h4 class="tortilla-name">
                     {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}#{{ loop.index }}{% endif %}
-                    {{ tortilla.name }}
+                    {{ g.name }}
                 </h4>
-                <span class="tortilla-score">⭐ {{ "%.1f"|format(tortilla.average_score()) }}</span>
+                <span class="tortilla-score">⭐ {{ g.avg }}</span>
             </div>
 
-            {% if tortilla.photo %}
-            <div class="tortilla-image-container">
-                <img src="{{ tortilla.photo if tortilla.photo.startswith('http') else url_for('static', filename='uploads/' + tortilla.photo) }}" alt="{{ tortilla.name }}" loading="lazy">
+            {% if g.photos %}
+            <div class="photo-carousel" id="carousel-r{{ loop.index }}">
+                <div class="carousel-track">
+                    {% for photo in g.photos %}
+                    <div class="carousel-slide">
+                        <img src="{{ photo if photo.startswith('http') else url_for('static', filename='uploads/' + photo) }}"
+                             alt="{{ g.name }}" loading="lazy">
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if g.photos|length > 1 %}
+                <div class="carousel-dots">
+                    {% for photo in g.photos %}
+                    <span class="carousel-dot{% if loop.first %} active{% endif %}"
+                          data-index="{{ loop.index0 }}"
+                          data-carousel="r{{ loop.index }}"></span>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
             {% else %}
             <div class="tortilla-image-placeholder">
                 <div class="placeholder-content">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="42" height="42" aria-hidden="true">
                         <defs>
-                            <radialGradient id="rg" cx="38%" cy="32%" r="70%">
+                            <radialGradient id="rg{{ loop.index }}" cx="38%" cy="32%" r="70%">
                                 <stop offset="0%"   stop-color="#fff4a0"/>
                                 <stop offset="45%"  stop-color="#FFD700"/>
                                 <stop offset="100%" stop-color="#b45309"/>
                             </radialGradient>
-                            <radialGradient id="rh" cx="42%" cy="36%" r="48%">
-                                <stop offset="0%"   stop-color="rgba(255,255,255,0.4)"/>
+                            <radialGradient id="rh{{ loop.index }}" cx="42%" cy="36%" r="48%">
+                                <stop offset="0%"  stop-color="rgba(255,255,255,0.4)"/>
                                 <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
                             </radialGradient>
                         </defs>
                         <circle cx="24" cy="24" r="23" fill="#92400e" opacity="0.7"/>
-                        <circle cx="24" cy="24" r="21" fill="url(#rg)"/>
-                        <circle cx="24" cy="24" r="21" fill="url(#rh)"/>
+                        <circle cx="24" cy="24" r="21" fill="url(#rg{{ loop.index }})"/>
+                        <circle cx="24" cy="24" r="21" fill="url(#rh{{ loop.index }})"/>
                         <circle cx="24" cy="24" r="14.5" fill="none" stroke="#b45309" stroke-width="1.2" opacity="0.38"/>
                         <circle cx="24" cy="24" r="7.5"  fill="none" stroke="#b45309" stroke-width="1"   opacity="0.28"/>
                         <ellipse cx="21" cy="27" rx="3.2" ry="2.2" fill="#d97706" opacity="0.45" transform="rotate(-12 21 27)"/>
@@ -58,38 +74,50 @@
                         <ellipse cx="26" cy="32" rx="2.2" ry="1.6" fill="#d97706" opacity="0.35" transform="rotate(5 26 32)"/>
                         <circle cx="24" cy="24" r="3" fill="#d97706" opacity="0.5"/>
                     </svg>
+                    <p class="placeholder-msg">¿La has probado?</p>
+                    <p class="placeholder-sub">Sé el primero en añadir una foto</p>
                 </div>
             </div>
             {% endif %}
 
             <div class="tortilla-info">
-                {% if tortilla.price %}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="info-item">
+                        <span class="info-label">Sabor</span>
+                        <span class="info-value">{{ g.avg_flavor if g.count > 0 else '—' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Textura</span>
+                        <span class="info-value">{{ g.avg_texture if g.count > 0 else '—' }}</span>
+                    </div>
+                </div>
+
+                {% if g.price %}
                 <div class="info-item">
-                    <span class="info-label">💰 Precio</span>
-                    <span class="info-value">{{ "%.2f"|format(tortilla.price) }} €</span>
+                    <span class="info-label">Precio</span>
+                    <span class="info-value">💶 {{ "%.2f"|format(g.price) }} €</span>
                 </div>
                 {% endif %}
 
+                {% if g.location %}
                 <div class="info-item">
-                    <span class="info-label">📝 Valoraciones</span>
-                    <span class="info-value">{{ tortilla.ratings|length }}</span>
-                </div>
-
-                {% if tortilla.location %}
-                <div class="info-item">
-                    <span class="info-label">📍 Ubicación</span>
-                    <a href="https://www.google.com/maps/search/{{ tortilla.location | urlencode }}"
-                       target="_blank" class="location-link">
-                        {{ tortilla.location }}
+                    <span class="info-label">Ubicación</span>
+                    <a href="https://www.google.com/maps/search/{{ g.location | urlencode }}"
+                       target="_blank" class="location-link" style="color:#38bdf8;text-decoration:none;font-weight:600;">
+                        📍 {{ g.location }}
                     </a>
                 </div>
                 {% endif %}
             </div>
 
             <div class="card-actions">
-                <button class="like-btn" onclick="like({{ tortilla.id }})" title="Me gusta">
-                    ❤️ <span id="likes-{{ tortilla.id }}">{{ tortilla.likes|length }}</span>
+                <button class="like-btn" onclick="like({{ g.id }})" title="Me gusta">
+                    ❤️ <span id="likes-{{ g.id }}">{{ g.likes }}</span>
                 </button>
+                <div class="card-meta">
+                    <span class="meta-text">Subido por <strong>{{ g.first_user }}</strong></span>
+                    <span class="meta-date">📅 {{ g.first_date.strftime("%d/%m/%Y") }} · {{ g.count }} valoraci{{ 'ón' if g.count == 1 else 'ones' }}</span>
+                </div>
             </div>
         </article>
         {% endfor %}

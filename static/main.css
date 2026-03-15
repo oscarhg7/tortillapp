@@ -309,7 +309,7 @@ body {
 .info-item:last-child { border-bottom: none; }
 
 .info-label {
-    color: #475569;
+    color: #94a3b8;
     font-weight: 500;
     font-size: 0.8rem;
 }
@@ -345,12 +345,12 @@ body {
 }
 
 .meta-text {
-    color: #64748b;
+    color: #94a3b8;
     font-size: 0.78rem;
 }
 
 .meta-date {
-    color: #334155;
+    color: #64748b;
     font-size: 0.72rem;
 }
 
@@ -634,7 +634,7 @@ button:disabled { background: #1e293b; cursor: not-allowed; opacity: 0.5; }
 }
 
 .menu-bottom a {
-    color: #475569;
+    color: #e2e8f0;
     text-decoration: none;
     transition: color 0.2s ease, transform 0.15s ease;
     padding: 8px 16px;
@@ -823,7 +823,7 @@ button:disabled { background: #1e293b; cursor: not-allowed; opacity: 0.5; }
     white-space: nowrap;
 }
 
-.profile-joined { color: #334155; font-size: 0.8rem; margin: 0; }
+.profile-joined { color: #64748b; font-size: 0.8rem; margin: 0; }
 
 /* ============ PERFIL - ESTADÍSTICAS ============ */
 .profile-stats {
@@ -847,7 +847,7 @@ button:disabled { background: #1e293b; cursor: not-allowed; opacity: 0.5; }
 }
 
 .stat-icon { font-size: 1.4rem; }
-.stat-label { color: #334155; font-size: 0.68rem; margin: 0; text-transform: uppercase; letter-spacing: 0.04em; }
+.stat-label { color: #64748b; font-size: 0.68rem; margin: 0; text-transform: uppercase; letter-spacing: 0.04em; }
 .stat-value { color: #FFD700; font-size: 1.3rem; font-weight: 800; margin: 0; }
 
 /* ============ PERFIL - MEJOR TORTILLA ============ */

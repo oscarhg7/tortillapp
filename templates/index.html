@@ -17,7 +17,7 @@
       <article class="card tortilla-card">
         <!-- Encabezado de la tarjeta -->
         <div class="card-header">
-          <h4 class="tortilla-name">{{ tortilla.name }}</h4>
+          <h4 class="tortilla-name">{{ name_stats[tortilla.name_normalized].display_name }}</h4>
           <span class="tortilla-score" title="Puntuación promedio">
             ⭐ {{ name_stats[tortilla.name_normalized].avg }}
           </span>
@@ -82,18 +82,18 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div class="info-item">
               <span class="info-label">Sabor</span>
-              <span class="info-value">{{ tortilla.ratings[0].flavor if tortilla.ratings else '—' }}</span>
+              <span class="info-value">{{ name_stats[tortilla.name_normalized].avg_flavor if name_stats[tortilla.name_normalized].count > 0 else '—' }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Textura</span>
-              <span class="info-value">{{ tortilla.ratings[0].texture if tortilla.ratings else '—' }}</span>
+              <span class="info-value">{{ name_stats[tortilla.name_normalized].avg_texture if name_stats[tortilla.name_normalized].count > 0 else '—' }}</span>
             </div>
           </div>
 
           <!-- Precio -->
           <div class="info-item">
             <span class="info-label">Precio</span>
-            <span class="info-value">{% if tortilla.price %}💶 {{ "%.2f"|format(tortilla.price) }} €{% else %}—{% endif %}</span>
+            <span class="info-value">{% if name_stats[tortilla.name_normalized].last_price %}💶 {{ "%.2f"|format(name_stats[tortilla.name_normalized].last_price) }} €{% else %}—{% endif %}</span>
           </div>
 
           <!-- Ubicación con Google Maps -->
@@ -115,7 +115,7 @@
             ❤️ <span id="likes-{{ tortilla.id }}">{{ tortilla.likes|length }}</span>
           </button>
           <div class="card-meta">
-            <span class="meta-text">Subido por <strong>{{ tortilla.user.username }}</strong></span>
+            <span class="meta-text">Subido por <strong>{{ name_stats[tortilla.name_normalized].first_user }}</strong></span>
             <span class="meta-date">📅 {{ tortilla.created_at.strftime("%d/%m/%Y") }} · {{ name_stats[tortilla.name_normalized].count }} valoraci{{ 'ón' if name_stats[tortilla.name_normalized].count == 1 else 'ones' }}</span>
           </div>
         </div>

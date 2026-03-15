@@ -81,5 +81,8 @@
 
 <!-- Scripts específicos de página (se cargan después de Leaflet) -->
 {% block scripts %}{% endblock %}
+
+<!-- Banner de cookies -->
+<script src="{{ url_for('static', filename='cookies.js') }}"></script>
 </body>
 </html>

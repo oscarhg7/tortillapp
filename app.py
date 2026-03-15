@@ -7,6 +7,7 @@ import os
 import uuid
 import logging
 import json
+import re
 
 # ============ CONFIGURACIÓN ============
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -49,6 +50,15 @@ app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 db = SQLAlchemy(app)
 
 # ============ UTILIDADES ============
+_STOP_WORDS = {'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',
+               'de', 'del', 'con', 'a', 'en', 'y', 'e', 'o', 'u', 'al'}
+
+def normalize_name(name):
+    """Elimina artículos y preposiciones para comparar nombres de tortillas."""
+    words = re.split(r'\s+', name.lower().strip())
+    filtered = [w for w in words if w and w not in _STOP_WORDS]
+    return ' '.join(filtered) if filtered else name.lower().strip()
+
 def allowed_file(filename):
     """Valida si la extensión del archivo es permitida"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
@@ -73,6 +83,7 @@ def validate_price(price):
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    email = db.Column(db.String(255), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -136,16 +147,21 @@ def register():
     """Ruta para registrar nuevos usuarios"""
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         password_confirm = request.form.get('password_confirm', '')
 
         # Validación
-        if not username or not password:
+        if not username or not password or not email:
             flash("Por favor rellena todos los campos", "error")
             return redirect(url_for('register'))
 
         if len(username) < 3:
             flash("El usuario debe tener al menos 3 caracteres", "error")
+            return redirect(url_for('register'))
+
+        if '@' not in email or '.' not in email.split('@')[-1]:
+            flash("Introduce un email válido", "error")
             return redirect(url_for('register'))
 
         if len(password) < 6:
@@ -160,9 +176,13 @@ def register():
             flash("Ese usuario ya existe 😅", "warning")
             return redirect(url_for('register'))
 
+        if User.query.filter_by(email=email).first():
+            flash("Ese email ya está registrado", "warning")
+            return redirect(url_for('register'))
+
         try:
             hashed_password = generate_password_hash(password)
-            user = User(username=username, password=hashed_password)
+            user = User(username=username, email=email, password=hashed_password)
             db.session.add(user)
             db.session.commit()
             flash("Usuario creado correctamente ✅", "success")
@@ -247,7 +267,7 @@ def home():
 
             # Comprobar duplicados por nombre para el mismo usuario
             existing_name = Tortilla.query.filter_by(
-                name_normalized=name.lower(),
+                name_normalized=normalize_name(name),
                 created_by=session['user_id']
             ).first()
             if existing_name:
@@ -271,7 +291,7 @@ def home():
             # Crear tortilla
             tortilla = Tortilla(
                 name=name,
-                name_normalized=name.lower(),
+                name_normalized=normalize_name(name),
                 location=location,
                 latitude=latitude,
                 longitude=longitude,
@@ -307,21 +327,43 @@ def home():
     all_tortillas = Tortilla.query.order_by(Tortilla.created_at.desc()).all()
 
     name_photos = {}   # name_normalized -> lista de fotos
-    name_stats = {}    # name_normalized -> {'count': N, 'avg': X}
+    name_stats = {}    # name_normalized -> dict con medias y primer usuario
     for t in all_tortillas:
         key = t.name_normalized
         if key not in name_photos:
             name_photos[key] = []
-            name_stats[key] = {'total': 0.0, 'count': 0}
+            name_stats[key] = {
+                'flavor_total': 0.0,
+                'texture_total': 0.0,
+                'count': 0,
+                'last_price': 0,
+                'display_name': t.name,
+                'first_user': t.user.username,  # se sobreescribe hasta llegar al más antiguo
+            }
+        else:
+            # all_tortillas está ordenado desc, así que el último visto es el más antiguo
+            name_stats[key]['first_user'] = t.user.username
+        # Nombre más largo como nombre representativo
+        if len(t.name) > len(name_stats[key]['display_name']):
+            name_stats[key]['display_name'] = t.name
+        # Guardar el precio más reciente que no sea 0
+        if t.price and name_stats[key]['last_price'] == 0:
+            name_stats[key]['last_price'] = t.price
         if t.photo:
             name_photos[key].append(t.photo)
         for r in t.ratings:
-            name_stats[key]['total'] += r.total_score()
+            name_stats[key]['flavor_total'] += r.flavor
+            name_stats[key]['texture_total'] += r.texture
             name_stats[key]['count'] += 1
 
     # Calcular medias
     for key, s in name_stats.items():
-        s['avg'] = round(s['total'] / s['count'], 2) if s['count'] > 0 else 0
+        if s['count'] > 0:
+            s['avg_flavor']  = round(s['flavor_total']  / s['count'], 1)
+            s['avg_texture'] = round(s['texture_total'] / s['count'], 1)
+            s['avg'] = round((s['flavor_total'] + s['texture_total']) / (2 * s['count']), 2)
+        else:
+            s['avg_flavor'] = s['avg_texture'] = s['avg'] = 0
 
     # Una card por nombre único (la más reciente primero)
     seen = set()
@@ -386,32 +428,85 @@ def profile(user_id):
 # ============ RANKING ============
 @app.route('/ranking')
 def ranking():
-    """Mostrar top 10 de tortillas mejor valoradas"""
+    """Mostrar top 10 de tortillas mejor valoradas, agrupadas por nombre"""
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    tortillas = Tortilla.query.all()
-    sorted_tortillas = sorted(
-        tortillas,
-        key=lambda t: t.average_score(),
-        reverse=True
-    )[:10]
+    all_tortillas = Tortilla.query.order_by(Tortilla.created_at.desc()).all()
+
+    # Agrupar por nombre normalizado (igual que en home)
+    groups = {}
+    for t in all_tortillas:
+        key = t.name_normalized
+        if key not in groups:
+            groups[key] = {
+                'id': t.id,
+                'name': t.name,
+                'name_normalized': key,
+                'photos': [],
+                'flavor_total': 0.0,
+                'texture_total': 0.0,
+                'count': 0,
+                'likes': 0,
+                'first_user': t.user.username,
+                'first_date': t.created_at,
+                'location': t.location,
+                'lat': t.latitude,
+                'lng': t.longitude,
+                'price': t.price if t.price else 0,
+            }
+        else:
+            # Iteramos de más reciente a más antiguo: el último es el primero publicado
+            groups[key]['first_user'] = t.user.username
+            groups[key]['first_date'] = t.created_at
+            # Tomar coords/ubicación del primero que las tenga
+            if not groups[key]['lat'] and t.latitude:
+                groups[key]['lat'] = t.latitude
+                groups[key]['lng'] = t.longitude
+            if not groups[key]['location'] and t.location:
+                groups[key]['location'] = t.location
+            # Precio más reciente no-cero
+            if t.price and groups[key]['price'] == 0:
+                groups[key]['price'] = t.price
+        # Nombre más largo como nombre representativo
+        if len(t.name) > len(groups[key]['name']):
+            groups[key]['name'] = t.name
+
+        if t.photo:
+            groups[key]['photos'].append(t.photo)
+        for r in t.ratings:
+            groups[key]['flavor_total'] += r.flavor
+            groups[key]['texture_total'] += r.texture
+            groups[key]['count'] += 1
+        groups[key]['likes'] += len(t.likes)
+
+    # Calcular medias por grupo
+    for g in groups.values():
+        if g['count'] > 0:
+            g['avg_flavor']  = round(g['flavor_total']  / g['count'], 1)
+            g['avg_texture'] = round(g['texture_total'] / g['count'], 1)
+            g['avg'] = round((g['flavor_total'] + g['texture_total']) / (2 * g['count']), 2)
+        else:
+            g['avg_flavor'] = g['avg_texture'] = g['avg'] = 0
+
+    # Top 10 por media
+    ranking_list = sorted(groups.values(), key=lambda g: g['avg'], reverse=True)[:10]
 
     map_data = json.dumps([
         {
-            'name': t.name,
-            'score': t.average_score(),
-            'location': t.location,
-            'lat': t.latitude,
-            'lng': t.longitude,
+            'name': g['name'],
+            'score': g['avg'],
+            'location': g['location'],
+            'lat': g['lat'],
+            'lng': g['lng'],
             'rank': i + 1,
         }
-        for i, t in enumerate(sorted_tortillas)
-        if t.location  # incluir aunque no tengan coords aún
+        for i, g in enumerate(ranking_list)
+        if g['location']
     ])
 
     logger.info("Ranking consultado")
-    return render_template("ranking.html", tortillas=sorted_tortillas, map_data=map_data)
+    return render_template("ranking.html", tortillas=ranking_list, map_data=map_data)
 
 # ============ SELECCIONAR UBICACIÓN ============
 @app.route('/select_location')
@@ -444,6 +539,11 @@ def init_db():
                     conn.commit()
                 except Exception:
                     pass  # La columna ya existe
+            try:
+                conn.execute(text("ALTER TABLE user ADD COLUMN email VARCHAR(255) NOT NULL DEFAULT ''"))
+                conn.commit()
+            except Exception:
+                pass  # La columna ya existe
 
 with app.app_context():
     init_db()
