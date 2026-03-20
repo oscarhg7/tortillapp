@@ -107,13 +107,27 @@
 
         <!-- Acciones -->
         <div class="card-actions">
-          <button 
-            class="like-btn" 
-            onclick="like({{ tortilla.id }})" 
-            aria-label="Me gusta esta tortilla"
-            title="Click para dar like">
-            ❤️ <span id="likes-{{ tortilla.id }}">{{ tortilla.likes|length }}</span>
-          </button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button
+              class="like-btn {% if name_stats[tortilla.name_normalized].user_liked %}liked{% endif %}"
+              onclick="like({{ tortilla.id }})"
+              aria-label="Me gusta esta tortilla"
+              title="Click para dar like">
+              ❤️ <span id="likes-{{ tortilla.id }}">{{ name_stats[tortilla.name_normalized].total_likes }}</span>
+            </button>
+            <a href="{{ url_for('comments', tortilla_id=tortilla.id) }}"
+               class="comments-btn"
+               title="Ver comentarios">
+              💬 <span>{{ name_stats[tortilla.name_normalized].comment_count }}</span>
+            </a>
+            {% if name_stats[tortilla.name_normalized].user_tortilla_id %}
+            <a href="{{ url_for('edit_tortilla', tortilla_id=name_stats[tortilla.name_normalized].user_tortilla_id) }}"
+               class="edit-btn"
+               title="Editar mi entrada">
+              ✏️ Editar
+            </a>
+            {% endif %}
+          </div>
           <div class="card-meta">
             <span class="meta-text">Subido por <strong>{{ name_stats[tortilla.name_normalized].first_user }}</strong></span>
             <span class="meta-date">📅 {{ tortilla.created_at.strftime("%d/%m/%Y") }} · {{ name_stats[tortilla.name_normalized].count }} valoraci{{ 'ón' if name_stats[tortilla.name_normalized].count == 1 else 'ones' }}</span>
@@ -282,6 +296,7 @@ function like(tortillaId) {
             document.getElementById(`likes-${tortillaId}`).textContent = data.likes;
             const btn = event.target.closest('.like-btn');
             if (btn) {
+                btn.classList.toggle('liked', data.liked);
                 btn.classList.add('like-animation');
                 setTimeout(() => btn.classList.remove('like-animation'), 300);
             }

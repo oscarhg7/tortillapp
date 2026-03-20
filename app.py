@@ -141,6 +141,18 @@ class Like(db.Model):
     def __repr__(self):
         return f'<Like {self.id}>'
 
+class Reply(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    rating_id = db.Column(db.Integer, db.ForeignKey('rating.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user = db.relationship('User')
+    rating = db.relationship('Rating', backref='replies')
+
+    def __repr__(self):
+        return f'<Reply {self.id}>'
+
 # ============ AUTENTICACIÓN ============
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -326,6 +338,7 @@ def home():
     # Agrupar tortillas por nombre y recoger todas las fotos de cada una
     all_tortillas = Tortilla.query.order_by(Tortilla.created_at.desc()).all()
 
+    current_user_id = session['user_id']
     name_photos = {}   # name_normalized -> lista de fotos
     name_stats = {}    # name_normalized -> dict con medias y primer usuario
     for t in all_tortillas:
@@ -338,7 +351,11 @@ def home():
                 'count': 0,
                 'last_price': 0,
                 'display_name': t.name,
-                'first_user': t.user.username,  # se sobreescribe hasta llegar al más antiguo
+                'first_user': t.user.username,
+                'total_likes': 0,
+                'user_liked': False,
+                'user_tortilla_id': None,
+                'comment_count': 0,
             }
         else:
             # all_tortillas está ordenado desc, así que el último visto es el más antiguo
@@ -355,6 +372,15 @@ def home():
             name_stats[key]['flavor_total'] += r.flavor
             name_stats[key]['texture_total'] += r.texture
             name_stats[key]['count'] += 1
+            if r.comment:
+                name_stats[key]['comment_count'] += 1
+        # Acumular likes del grupo
+        name_stats[key]['total_likes'] += len(t.likes)
+        if not name_stats[key]['user_liked']:
+            name_stats[key]['user_liked'] = any(l.user_id == current_user_id for l in t.likes)
+        # Tortilla del usuario actual en este grupo
+        if t.created_by == current_user_id:
+            name_stats[key]['user_tortilla_id'] = t.id
 
     # Calcular medias
     for key, s in name_stats.items():
@@ -400,7 +426,9 @@ def like(tortilla_id):
             liked = True
 
         db.session.commit()
-        total_likes = Like.query.filter_by(tortilla_id=tortilla_id).count()
+        # Total de likes del grupo (mismo nombre normalizado)
+        sibling_ids = [t.id for t in Tortilla.query.filter_by(name_normalized=tortilla.name_normalized).all()]
+        total_likes = Like.query.filter(Like.tortilla_id.in_(sibling_ids)).count()
 
         logger.info(f"Like {'añadido' if liked else 'removido'} a tortilla {tortilla_id}")
         return jsonify({"likes": total_likes, "liked": liked})
@@ -507,6 +535,184 @@ def ranking():
 
     logger.info("Ranking consultado")
     return render_template("ranking.html", tortillas=ranking_list, map_data=map_data)
+
+# ============ EDITAR TORTILLA ============
+@app.route('/edit/<int:tortilla_id>', methods=['GET', 'POST'])
+def edit_tortilla(tortilla_id):
+    """Permite al usuario editar su propia tortilla y valoración"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    tortilla = Tortilla.query.get_or_404(tortilla_id)
+
+    if tortilla.created_by != session['user_id']:
+        flash("No puedes editar una tortilla que no es tuya", "error")
+        return redirect(url_for('home'))
+
+    rating = Rating.query.filter_by(tortilla_id=tortilla_id, user_id=session['user_id']).first()
+
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name', '').strip()
+            if not name:
+                flash("El nombre es obligatorio", "error")
+                return redirect(url_for('edit_tortilla', tortilla_id=tortilla_id))
+
+            new_normalized = normalize_name(name)
+            if new_normalized != tortilla.name_normalized:
+                collision = Tortilla.query.filter_by(name_normalized=new_normalized, created_by=session['user_id']).first()
+                if collision and collision.id != tortilla_id:
+                    flash("Ya tienes otra tortilla con ese nombre registrada", "warning")
+                    return redirect(url_for('edit_tortilla', tortilla_id=tortilla_id))
+
+            file = request.files.get('photo')
+            if file and file.filename != '' and allowed_file(file.filename):
+                if CLOUDINARY_CONFIGURED:
+                    result = cloudinary.uploader.upload(
+                        file,
+                        folder='tortillapp',
+                        transformation=[{'width': 1000, 'crop': 'limit', 'quality': 'auto', 'fetch_format': 'auto'}]
+                    )
+                    tortilla.photo = result['secure_url']
+                else:
+                    ext = file.filename.rsplit('.', 1)[1].lower()
+                    filename = f"{uuid.uuid4()}.{ext}"
+                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                    tortilla.photo = filename
+
+            tortilla.name = name
+            tortilla.name_normalized = new_normalized
+            tortilla.price = validate_price(request.form.get('price', 0))
+            tortilla.location = request.form.get('location', '').strip() or None
+            try:
+                tortilla.latitude = float(request.form.get('latitude')) if request.form.get('latitude') else None
+                tortilla.longitude = float(request.form.get('longitude')) if request.form.get('longitude') else None
+            except (ValueError, TypeError):
+                tortilla.latitude = tortilla.longitude = None
+
+            if rating:
+                rating.flavor = validate_rating_score(request.form.get('sabor', 0.5))
+                rating.texture = validate_rating_score(request.form.get('textura', 0.5))
+                rating.comment = request.form.get('comment', '').strip()
+            else:
+                rating = Rating(
+                    flavor=validate_rating_score(request.form.get('sabor', 0.5)),
+                    texture=validate_rating_score(request.form.get('textura', 0.5)),
+                    comment=request.form.get('comment', '').strip(),
+                    tortilla_id=tortilla_id,
+                    user_id=session['user_id']
+                )
+                db.session.add(rating)
+
+            db.session.commit()
+            flash(f"Tortilla '{name}' actualizada correctamente ✅", "success")
+            logger.info(f"Tortilla {tortilla_id} editada por usuario {session['user_id']}")
+            return redirect(url_for('home'))
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al editar tortilla {tortilla_id}: {e}")
+            flash("Error al guardar los cambios", "error")
+            return redirect(url_for('edit_tortilla', tortilla_id=tortilla_id))
+
+    return render_template('edit.html', tortilla=tortilla, rating=rating)
+
+
+# ============ COMENTARIOS ============
+@app.route('/comments/<int:tortilla_id>')
+def comments(tortilla_id):
+    """Muestra todos los comentarios del grupo al que pertenece la tortilla"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    ref = Tortilla.query.get_or_404(tortilla_id)
+    siblings = Tortilla.query.filter_by(name_normalized=ref.name_normalized).all()
+    sibling_ids = [t.id for t in siblings]
+
+    ratings = (Rating.query
+               .filter(Rating.tortilla_id.in_(sibling_ids))
+               .order_by(Rating.created_at.desc())
+               .all())
+
+    display_name = max((t.name for t in siblings), key=len)
+
+    return render_template('comments.html', display_name=display_name, ratings=ratings, ref_id=tortilla_id)
+
+
+@app.route('/reply/<int:rating_id>', methods=['POST'])
+def reply(rating_id):
+    """Añade una respuesta a un rating"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    rating = Rating.query.get_or_404(rating_id)
+    body = request.form.get('body', '').strip()
+
+    if not body:
+        flash("La respuesta no puede estar vacía", "error")
+    elif len(body) > 500:
+        flash("La respuesta no puede superar los 500 caracteres", "error")
+    else:
+        try:
+            rep = Reply(rating_id=rating_id, user_id=session['user_id'], body=body)
+            db.session.add(rep)
+            db.session.commit()
+            flash("Respuesta publicada ✅", "success")
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al guardar reply: {e}")
+            flash("Error al publicar la respuesta", "error")
+
+    return redirect(url_for('comments', tortilla_id=rating.tortilla_id))
+
+
+# ============ EXPORTAR BASE DE DATOS (TEMPORAL) ============
+@app.route('/admin/export')
+def admin_export():
+    """Exporta toda la base de datos como JSON. Protegido por SECRET_KEY."""
+    if request.args.get('key') != app.secret_key:
+        return "No autorizado", 403
+
+    data = {
+        'users': [
+            {'id': u.id, 'username': u.username, 'email': u.email,
+             'created_at': u.created_at.isoformat()}
+            for u in User.query.all()
+        ],
+        'tortillas': [
+            {'id': t.id, 'name': t.name, 'name_normalized': t.name_normalized,
+             'created_by': t.created_by, 'location': t.location,
+             'latitude': t.latitude, 'longitude': t.longitude,
+             'price': t.price, 'photo': t.photo,
+             'created_at': t.created_at.isoformat()}
+            for t in Tortilla.query.all()
+        ],
+        'ratings': [
+            {'id': r.id, 'tortilla_id': r.tortilla_id, 'user_id': r.user_id,
+             'flavor': r.flavor, 'texture': r.texture, 'comment': r.comment,
+             'created_at': r.created_at.isoformat()}
+            for r in Rating.query.all()
+        ],
+        'likes': [
+            {'id': l.id, 'tortilla_id': l.tortilla_id, 'user_id': l.user_id,
+             'created_at': l.created_at.isoformat()}
+            for l in Like.query.all()
+        ],
+        'replies': [
+            {'id': r.id, 'rating_id': r.rating_id, 'user_id': r.user_id,
+             'body': r.body, 'created_at': r.created_at.isoformat()}
+            for r in Reply.query.all()
+        ],
+    }
+
+    from flask import Response
+    import json as _json
+    return Response(
+        _json.dumps(data, ensure_ascii=False, indent=2),
+        mimetype='application/json',
+        headers={'Content-Disposition': 'attachment; filename=tortillas_backup.json'}
+    )
+
 
 # ============ SELECCIONAR UBICACIÓN ============
 @app.route('/select_location')

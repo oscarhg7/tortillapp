@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}TortillApp - Comentarios · {{ display_name }}{% endblock %}
+
+{% block content %}
+
+<section class="section active">
+
+  <div style="margin-bottom:24px;">
+    <a href="{{ url_for('home') }}" class="back-link">← Volver al feed</a>
+    <h2 style="color:#FFD700;font-size:1.6rem;margin:12px 0 4px;">💬 Valoraciones</h2>
+    <p style="color:#94a3b8;margin:0;">{{ display_name }}</p>
+  </div>
+
+  {% if ratings | selectattr('comment') | list %}
+    <div class="comments-list">
+      {% for rating in ratings if rating.comment %}
+      <article class="card comment-card">
+
+        <!-- Cabecera del rating -->
+        <div class="comment-header">
+          <div class="comment-author">
+            <span class="author-avatar">{{ rating.user.username[0].upper() }}</span>
+            <div>
+              <strong style="color:#e2e8f0;">{{ rating.user.username }}</strong>
+              <span class="comment-date">{{ rating.created_at.strftime("%d/%m/%Y") }}</span>
+            </div>
+          </div>
+          <div class="comment-scores">
+            <span class="score-pill" title="Sabor">🍳 {{ rating.flavor }}</span>
+            <span class="score-pill" title="Textura">🥚 {{ rating.texture }}</span>
+            <span class="score-pill score-avg" title="Media">⭐ {{ rating.total_score() }}</span>
+          </div>
+        </div>
+
+        <p class="comment-body">"{{ rating.comment }}"</p>
+
+        <!-- Respuestas existentes -->
+        {% if rating.replies %}
+        <div class="replies-list">
+          {% for rep in rating.replies | sort(attribute='created_at') %}
+          <div class="reply-item">
+            <span class="reply-avatar">{{ rep.user.username[0].upper() }}</span>
+            <div class="reply-bubble">
+              <span class="reply-author">{{ rep.user.username }}</span>
+              <span class="reply-date">{{ rep.created_at.strftime("%d/%m/%Y") }}</span>
+              <p class="reply-body">{{ rep.body }}</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Formulario de respuesta -->
+        <form method="POST" action="{{ url_for('reply', rating_id=rating.id) }}" class="reply-form">
+          <div class="reply-input-row">
+            <input type="text" name="body" class="form-control reply-input"
+              placeholder="Escribe una respuesta..." maxlength="500" required>
+            <button type="submit" class="reply-send-btn" title="Enviar">➤</button>
+          </div>
+        </form>
+
+      </article>
+      {% endfor %}
+    </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">💬</div>
+    <h3>Sin comentarios aún</h3>
+    <p>Nadie ha dejado un comentario sobre esta tortilla todavía.</p>
+  </div>
+  {% endif %}
+
+</section>
+
+{% endblock %}

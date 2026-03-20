@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}TortillApp - Editar Tortilla{% endblock %}
+
+{% block content %}
+
+<section class="section active">
+  <div class="form-header">
+    <h2>✏️ Editar Tortilla</h2>
+    <p class="form-subtitle">Modifica los datos de tu tortilla</p>
+  </div>
+
+  <article class="card form-card">
+    <form method="POST" enctype="multipart/form-data" class="tortilla-form" novalidate>
+
+      <!-- Nombre -->
+      <div class="form-group">
+        <label for="name">Nombre de la tortilla <span class="required">*</span></label>
+        <input
+          id="name" name="name" type="text" class="form-control"
+          placeholder="Ej: Tortilla de patatas clásica"
+          required maxlength="100" value="{{ tortilla.name }}">
+        <small class="form-help">Campo obligatorio</small>
+      </div>
+
+      <!-- Valoraciones -->
+      {% if rating %}
+      <div class="form-group form-group-double">
+        <div class="form-sub-group">
+          <label for="sabor">Sabor <span class="required">*</span> <small style="color:#64748b;font-weight:400;">mín. 0.5 · máx. 5</small></label>
+          <div class="rating-input">
+            <input type="number" id="sabor" name="sabor" step="0.5" class="form-control"
+              min="0.5" max="5" value="{{ rating.flavor }}" required>
+            <span class="rating-value" id="sabor-value">{{ rating.flavor }}</span>
+          </div>
+        </div>
+        <div class="form-sub-group">
+          <label for="textura">Textura <span class="required">*</span> <small style="color:#64748b;font-weight:400;">mín. 0.5 · máx. 5</small></label>
+          <div class="rating-input">
+            <input type="number" id="textura" name="textura" step="0.5" class="form-control"
+              min="0.5" max="5" value="{{ rating.texture }}" required>
+            <span class="rating-value" id="textura-value">{{ rating.texture }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comentario -->
+      <div class="form-group">
+        <label for="comment">Comentario</label>
+        <textarea id="comment" name="comment" class="form-control"
+          placeholder="Escribe tu opinión..." maxlength="500" rows="4">{{ rating.comment or '' }}</textarea>
+        <small class="form-help"><span id="comment-count">{{ (rating.comment or '')|length }}</span>/500</small>
+      </div>
+      {% endif %}
+
+      <!-- Precio -->
+      <div class="form-group">
+        <label for="price">Precio (€)</label>
+        <input type="number" id="price" name="price" step="0.01" class="form-control"
+          placeholder="Ej: 3.50" min="0" value="{{ tortilla.price or 0 }}">
+        <small class="form-help">Deja en 0 si no quieres especificar precio</small>
+      </div>
+
+      <!-- Ubicación -->
+      <div class="form-group">
+        <label for="location">📍 Ubicación</label>
+        <div class="location-autocomplete">
+          <input type="text" id="location" name="location" class="form-control"
+            placeholder="Escribe una calle, ciudad o zona..."
+            maxlength="200" autocomplete="off" value="{{ tortilla.location or '' }}">
+          <div id="location-suggestions" class="location-suggestions"></div>
+        </div>
+        <small class="form-help">Dirección donde probaste la tortilla (opcional)</small>
+      </div>
+
+      <!-- Foto -->
+      <div class="form-group">
+        <label for="photo">📷 Añadir / cambiar foto</label>
+        {% if tortilla.photo %}
+        <div style="margin-bottom:10px;">
+          <img src="{{ tortilla.photo if tortilla.photo.startswith('http') else url_for('static', filename='uploads/' + tortilla.photo) }}"
+               alt="Foto actual" style="max-width:160px;border-radius:10px;border:2px solid #334155;">
+          <p style="color:#94a3b8;font-size:0.85rem;margin-top:6px;">Foto actual — sube una nueva para reemplazarla</p>
+        </div>
+        {% endif %}
+        <input id="photo" type="file" name="photo" class="form-control"
+          accept="image/png,image/jpeg,image/jpg,image/gif">
+        <small class="form-help">Formatos: JPG, PNG, GIF. Máximo 5MB (opcional)</small>
+      </div>
+
+      <input type="hidden" id="latitude" name="latitude" value="{{ tortilla.latitude or '' }}">
+      <input type="hidden" id="longitude" name="longitude" value="{{ tortilla.longitude or '' }}">
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-success btn-large" style="flex:1;">
+          💾 Guardar cambios
+        </button>
+        <a href="{{ url_for('home') }}" class="btn btn-large"
+           style="flex:1;text-align:center;background:rgba(100,116,139,0.2);color:#94a3b8;border:1px solid rgba(100,116,139,0.3);">
+          Cancelar
+        </a>
+      </div>
+
+      <p class="form-note">Los campos marcados con <span class="required">*</span> son obligatorios</p>
+    </form>
+  </article>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const commentEl = document.getElementById('comment');
+    const saborEl   = document.getElementById('sabor');
+    const texturaEl = document.getElementById('textura');
+
+    if (commentEl) {
+        commentEl.addEventListener('input', function() {
+            document.getElementById('comment-count').textContent = this.value.length;
+        });
+    }
+    if (saborEl) {
+        saborEl.addEventListener('input', function() {
+            document.getElementById('sabor-value').textContent = this.value;
+        });
+    }
+    if (texturaEl) {
+        texturaEl.addEventListener('input', function() {
+            document.getElementById('textura-value').textContent = this.value;
+        });
+    }
+});
+</script>
+
+{% endblock %}

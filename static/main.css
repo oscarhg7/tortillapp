@@ -565,6 +565,118 @@ button:disabled { background: #1e293b; cursor: not-allowed; opacity: 0.5; }
 
 .like-animation { animation: like-animation 0.3s ease; }
 
+.like-btn.liked {
+    background: rgba(239, 68, 68, 0.22) !important;
+    border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+.edit-btn {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    color: #60a5fa;
+    font-size: 0.9rem;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.2s ease;
+    min-height: 44px;
+}
+.edit-btn:hover {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+    text-decoration: none;
+}
+
+.comments-btn {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: #34d399;
+    font-size: 0.9rem;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.2s ease;
+    min-height: 44px;
+}
+.comments-btn:hover {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+    text-decoration: none;
+}
+
+/* ============ PÁGINA DE COMENTARIOS ============ */
+.back-link { color: #60a5fa; text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+.back-link:hover { color: #93c5fd; text-decoration: none; }
+
+.comments-list { display: flex; flex-direction: column; gap: 16px; }
+.comment-card { padding: 18px 20px !important; }
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.comment-author { display: flex; align-items: center; gap: 10px; }
+.author-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, #f59e0b, #b45309);
+    color: #1e293b; font-weight: 800; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.comment-date { display: block; font-size: 0.78rem; color: #64748b; }
+.comment-scores { display: flex; gap: 6px; flex-wrap: wrap; }
+.score-pill {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    color: #cbd5e1; font-size: 0.8rem; padding: 3px 10px; border-radius: 12px; font-weight: 600;
+}
+.score-pill.score-avg {
+    background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.3); color: #fbbf24;
+}
+.comment-body { color: #cbd5e1; font-size: 0.95rem; line-height: 1.5; margin: 0 0 14px; font-style: italic; }
+
+.replies-list {
+    border-left: 2px solid rgba(99,102,241,0.25);
+    margin: 0 0 14px 8px; padding-left: 14px;
+    display: flex; flex-direction: column; gap: 10px;
+}
+.reply-item { display: flex; gap: 8px; align-items: flex-start; }
+.reply-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #4338ca);
+    color: #fff; font-weight: 700; font-size: 0.78rem;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.reply-bubble {
+    background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.15);
+    border-radius: 12px; padding: 8px 12px; flex: 1;
+}
+.reply-author { font-weight: 700; color: #a5b4fc; font-size: 0.82rem; }
+.reply-date { color: #475569; font-size: 0.75rem; margin-left: 6px; }
+.reply-body { color: #cbd5e1; font-size: 0.88rem; margin: 4px 0 0; line-height: 1.4; }
+
+.reply-form { margin-top: 4px; }
+.reply-input-row { display: flex; gap: 8px; align-items: center; }
+.reply-input { flex: 1; font-size: 0.88rem !important; padding: 8px 14px !important; border-radius: 20px !important; }
+.reply-send-btn {
+    background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.35);
+    color: #a5b4fc; width: 40px; height: 40px; border-radius: 50%;
+    cursor: pointer; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: background 0.2s;
+}
+.reply-send-btn:hover { background: rgba(99,102,241,0.35); color: #c7d2fe; }
+
 /* ============ SECCIONES ============ */
 .section {
     display: none;
