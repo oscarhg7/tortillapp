@@ -669,9 +669,10 @@ def reply(rating_id):
 # ============ EXPORTAR BASE DE DATOS (TEMPORAL) ============
 @app.route('/admin/export')
 def admin_export():
-    """Exporta toda la base de datos como JSON. Protegido por SECRET_KEY."""
-    if request.args.get('key') != app.secret_key:
-        return "No autorizado", 403
+    """Exporta toda la base de datos como JSON. Protegido por BACKUP_KEY."""
+    backup_key = os.environ.get('BACKUP_KEY', 'tortillas2024')
+    if request.args.get('key') != backup_key:
+        return "No autorizado. Añade ?key=TU_BACKUP_KEY a la URL", 403
 
     data = {
         'users': [
@@ -712,6 +713,30 @@ def admin_export():
         mimetype='application/json',
         headers={'Content-Disposition': 'attachment; filename=tortillas_backup.json'}
     )
+
+
+# ============ DIAGNÓSTICO (TEMPORAL) ============
+@app.route('/admin/status')
+def admin_status():
+    """Comprueba que la app y la BD funcionan."""
+    backup_key = os.environ.get('BACKUP_KEY', 'tortillas2024')
+    if request.args.get('key') != backup_key:
+        return "No autorizado", 403
+    try:
+        user_count = User.query.count()
+        tortilla_count = Tortilla.query.count()
+        rating_count = Rating.query.count()
+        db_url = app.config['SQLALCHEMY_DATABASE_URI']
+        db_type = 'postgresql' if 'postgresql' in db_url else 'sqlite'
+        return jsonify({
+            'status': 'ok',
+            'db_type': db_type,
+            'users': user_count,
+            'tortillas': tortilla_count,
+            'ratings': rating_count,
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'detail': str(e)}), 500
 
 
 # ============ SELECCIONAR UBICACIÓN ============
