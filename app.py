@@ -618,6 +618,12 @@ def edit_tortilla(tortilla_id):
             tortilla.name = name
             tortilla.name_normalized = new_normalized
             tortilla.price = validate_price(request.form.get('price', 0))
+            date_str = request.form.get('created_at', '').strip()
+            if date_str:
+                try:
+                    tortilla.created_at = datetime.strptime(date_str, '%Y-%m-%d')
+                except ValueError:
+                    pass
             tortilla.location = request.form.get('location', '').strip() or None
             try:
                 tortilla.latitude = float(request.form.get('latitude')) if request.form.get('latitude') else None
