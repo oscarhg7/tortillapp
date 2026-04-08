@@ -112,6 +112,43 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        password_confirm = request.form.get('password_confirm', '')
+
+        if not username or not password or not password_confirm:
+            flash("Por favor rellena todos los campos", "error")
+            return redirect(url_for('reset_password'))
+
+        if len(password) < 6:
+            flash("La contraseña debe tener al menos 6 caracteres", "error")
+            return redirect(url_for('reset_password'))
+
+        if password != password_confirm:
+            flash("Las contraseñas no coinciden", "error")
+            return redirect(url_for('reset_password'))
+
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            flash("No existe ningún usuario con ese nombre", "error")
+            return redirect(url_for('reset_password'))
+
+        try:
+            user.password = generate_password_hash(password)
+            db.session.commit()
+            flash("Contraseña cambiada correctamente. Ya puedes iniciar sesión.", "success")
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al cambiar contraseña: {e}")
+            flash("Error al cambiar la contraseña", "error")
+            return redirect(url_for('reset_password'))
+
+    return render_template('reset_password.html')
+
 # ---------------- HOME ----------------
 @app.route('/', methods=['GET','POST'])
 def home():
