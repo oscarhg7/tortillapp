@@ -489,11 +489,18 @@
                 return;
             }
             if (window.opener && !window.opener.closed) {
-                const input = window.opener.document.getElementById('location');
-                if (input) {
-                    input.value = selectedLocation.coords;
-                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                const doc = window.opener.document;
+                const locationInput = doc.getElementById('location');
+                const latInput = doc.getElementById('latitude');
+                const lngInput = doc.getElementById('longitude');
+                if (locationInput) {
+                    locationInput.value = selectedLocation.address !== 'Dirección no disponible'
+                        ? selectedLocation.name + ' — ' + selectedLocation.address
+                        : selectedLocation.name;
+                    locationInput.dispatchEvent(new Event('change', { bubbles: true }));
                 }
+                if (latInput) latInput.value = selectedLocation.lat;
+                if (lngInput) lngInput.value = selectedLocation.lon;
             }
             setTimeout(() => window.close(), 500);
         }

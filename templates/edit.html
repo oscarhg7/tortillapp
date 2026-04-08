@@ -72,11 +72,15 @@
       <!-- Ubicación -->
       <div class="form-group">
         <label for="location">📍 Ubicación</label>
-        <div class="location-autocomplete">
+        <div style="display:flex;gap:8px;align-items:flex-start;">
           <input type="text" id="location" name="location" class="form-control"
-            placeholder="Escribe una calle, ciudad o zona..."
-            maxlength="200" autocomplete="off" value="{{ tortilla.location or '' }}">
-          <div id="location-suggestions" class="location-suggestions"></div>
+            placeholder="Escribe o usa el buscador..."
+            maxlength="200" autocomplete="off" value="{{ tortilla.location or '' }}"
+            style="flex:1;">
+          <button type="button" onclick="window.open('{{ url_for('select_location') }}', 'location_search', 'width=600,height=800,scrollbars=yes')"
+            class="btn" style="white-space:nowrap;background:#2563eb;color:white;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;">
+            🗺️ Buscar
+          </button>
         </div>
         <small class="form-help">Dirección donde probaste la tortilla (opcional)</small>
       </div>
@@ -96,8 +100,8 @@
         <small class="form-help">Formatos: JPG, PNG, GIF. Máximo 5MB (opcional)</small>
       </div>
 
-      <input type="hidden" id="latitude" name="latitude" value="{{ tortilla.latitude or '' }}">
-      <input type="hidden" id="longitude" name="longitude" value="{{ tortilla.longitude or '' }}">
+      <input type="hidden" id="latitude" name="latitude" value="{{ tortilla.latitude if tortilla.latitude is not none else '' }}">
+      <input type="hidden" id="longitude" name="longitude" value="{{ tortilla.longitude if tortilla.longitude is not none else '' }}">
 
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
         <button type="submit" class="btn btn-success btn-large" style="flex:1;">
