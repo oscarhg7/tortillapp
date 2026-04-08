@@ -197,9 +197,9 @@
         .selected-info {
             background: #064e3b;
             border: 1px solid #10b981;
-            padding: 15px;
+            padding: 12px 15px;
             border-radius: 8px;
-            margin-top: 20px;
+            margin-top: 12px;
             display: none;
         }
 
@@ -207,48 +207,21 @@
             display: block;
         }
 
-        .selected-info h3 {
-            color: #10b981;
-            margin-bottom: 10px;
-        }
-
-        .selected-info p {
-            color: #d1fae5;
-            margin-bottom: 5px;
-            font-size: 0.95rem;
-        }
-
-        .selected-coords {
-            font-family: monospace;
-            background: #0f172a;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-            color: #FFD700;
-            font-weight: 600;
-        }
-
         .btn-confirm {
             background: #10b981;
-            width: 100%;
-            padding: 12px;
+            padding: 10px 20px;
             border: none;
             border-radius: 8px;
             color: white;
             font-weight: 600;
             cursor: pointer;
-            margin-top: 15px;
-            transition: background-color 0.3s ease;
+            font-size: 1rem;
+            transition: background-color 0.2s ease;
+            white-space: nowrap;
         }
 
         .btn-confirm:hover {
             background: #059669;
-        }
-
-        .btn-confirm:disabled {
-            background: #64748b;
-            cursor: not-allowed;
-            opacity: 0.5;
         }
 
         /* ============ LOADING ============ */
@@ -316,12 +289,25 @@
         <h1>🔍 Buscar ubicación</h1>
         <div class="search-container">
             <div class="search-box">
-                <input 
-                    type="text" 
-                    id="searchInput" 
-                    placeholder="Ej: Calle Gran Vía 45, Madrid"
+                <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="Nombre del bar, restaurante o dirección..."
                     autocomplete="off">
                 <button onclick="searchLocation()">Buscar</button>
+            </div>
+        </div>
+
+        <!-- Información seleccionada (sticky, dentro del header) -->
+        <div class="selected-info" id="selectedInfo">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                <div>
+                    <p id="selectedName" style="font-weight:600;color:#10b981;margin:0;"></p>
+                    <p id="selectedAddress" style="color:#d1fae5;font-size:0.85rem;margin:2px 0 0;"></p>
+                </div>
+                <button class="btn-confirm" onclick="confirmLocation()" style="flex-shrink:0;">
+                    ✓ Confirmar
+                </button>
             </div>
         </div>
     </div>
@@ -333,15 +319,6 @@
 
     <!-- Mapa pequeño -->
     <div id="map"></div>
-
-    <!-- Información seleccionada -->
-    <div class="selected-info" id="selectedInfo">
-        <h3>✓ Ubicación seleccionada</h3>
-        <p id="selectedName"></p>
-        <p id="selectedAddress"></p>
-        <div class="selected-coords" id="selectedCoords"></div>
-        <button class="btn-confirm" onclick="confirmLocation()">Confirmar ubicación</button>
-    </div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -479,7 +456,6 @@
 
             document.getElementById('selectedName').textContent = `📌 ${name}`;
             document.getElementById('selectedAddress').textContent = address;
-            document.getElementById('selectedCoords').textContent = `${lat}, ${lon}`;
             document.getElementById('selectedInfo').classList.add('active');
 
             document.querySelectorAll('.result-item').forEach((el, i) => {
