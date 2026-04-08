@@ -236,6 +236,41 @@ def logout():
     logger.info(f"Usuario {username} cerró sesión")
     return redirect(url_for('login'))
 
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        password_confirm = request.form.get('password_confirm', '')
+
+        if not username or not password or not password_confirm:
+            flash("Por favor rellena todos los campos", "error")
+            return redirect(url_for('reset_password'))
+        if len(password) < 6:
+            flash("La contraseña debe tener al menos 6 caracteres", "error")
+            return redirect(url_for('reset_password'))
+        if password != password_confirm:
+            flash("Las contraseñas no coinciden", "error")
+            return redirect(url_for('reset_password'))
+
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            flash("No existe ningún usuario con ese nombre", "error")
+            return redirect(url_for('reset_password'))
+
+        try:
+            user.password = generate_password_hash(password)
+            db.session.commit()
+            flash("Contraseña cambiada correctamente. Ya puedes iniciar sesión.", "success")
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al cambiar contraseña: {e}")
+            flash("Error al cambiar la contraseña", "error")
+            return redirect(url_for('reset_password'))
+
+    return render_template('reset_password.html')
+
 # ============ HOME ============
 @app.route('/', methods=['GET', 'POST'])
 def home():
@@ -714,6 +749,97 @@ def admin_export():
         headers={'Content-Disposition': 'attachment; filename=tortillas_backup.json'}
     )
 
+
+# ============ IMPORTAR BACKUP ============
+@app.route('/admin/import', methods=['GET', 'POST'])
+def admin_import():
+    backup_key = os.environ.get('BACKUP_KEY', 'tortillas2024')
+    if request.args.get('key') != backup_key:
+        return "No autorizado. Añade ?key=TU_BACKUP_KEY a la URL", 403
+
+    if request.method == 'POST':
+        file = request.files.get('backup')
+        if not file or not file.filename.endswith('.json'):
+            return "Sube un archivo .json válido", 400
+        try:
+            data = json.loads(file.read().decode('utf-8'))
+        except Exception:
+            return "El archivo JSON no es válido", 400
+
+        PLACEHOLDER_PASSWORD = generate_password_hash("cambiar_esta_contraseña_123")
+        imported = {"usuarios": 0, "tortillas": 0, "ratings": 0, "likes": 0, "replies": 0}
+
+        for u in data.get("users", []):
+            if not User.query.get(u["id"]):
+                db.session.add(User(
+                    id=u["id"], username=u["username"], email=u.get("email", f"{u['username']}@migrado.local"),
+                    password=PLACEHOLDER_PASSWORD,
+                    created_at=datetime.fromisoformat(u["created_at"]) if u.get("created_at") else datetime.utcnow()
+                ))
+                imported["usuarios"] += 1
+        db.session.flush()
+
+        for t in data.get("tortillas", []):
+            if not Tortilla.query.get(t["id"]):
+                db.session.add(Tortilla(
+                    id=t["id"], name=t["name"],
+                    name_normalized=t.get("name_normalized", t["name"].lower()),
+                    created_by=t["created_by"], location=t.get("location"),
+                    latitude=t.get("latitude"), longitude=t.get("longitude"),
+                    price=t.get("price", 0), photo=t.get("photo"),
+                    created_at=datetime.fromisoformat(t["created_at"]) if t.get("created_at") else datetime.utcnow()
+                ))
+                imported["tortillas"] += 1
+        db.session.flush()
+
+        for r in data.get("ratings", []):
+            if not Rating.query.get(r["id"]):
+                db.session.add(Rating(
+                    id=r["id"], tortilla_id=r["tortilla_id"], user_id=r["user_id"],
+                    flavor=r["flavor"], texture=r["texture"], comment=r.get("comment"),
+                    created_at=datetime.fromisoformat(r["created_at"]) if r.get("created_at") else datetime.utcnow()
+                ))
+                imported["ratings"] += 1
+
+        for l in data.get("likes", []):
+            if not Like.query.get(l["id"]):
+                db.session.add(Like(
+                    id=l["id"], tortilla_id=l["tortilla_id"], user_id=l["user_id"],
+                    created_at=datetime.fromisoformat(l["created_at"]) if l.get("created_at") else datetime.utcnow()
+                ))
+                imported["likes"] += 1
+
+        for r in data.get("replies", []):
+            if not Reply.query.get(r["id"]):
+                db.session.add(Reply(
+                    id=r["id"], rating_id=r["rating_id"], user_id=r["user_id"],
+                    body=r["body"],
+                    created_at=datetime.fromisoformat(r["created_at"]) if r.get("created_at") else datetime.utcnow()
+                ))
+                imported["replies"] += 1
+
+        db.session.commit()
+        return f"""
+        <h2>Importacion completada</h2>
+        <ul>
+            <li>Usuarios: {imported['usuarios']}</li>
+            <li>Tortillas: {imported['tortillas']}</li>
+            <li>Ratings: {imported['ratings']}</li>
+            <li>Likes: {imported['likes']}</li>
+            <li>Replies: {imported['replies']}</li>
+        </ul>
+        <p><b>Aviso:</b> Las contraseñas han sido reseteadas. Los usuarios deben ir a
+        <a href="/reset-password">/reset-password</a> para crear una nueva.</p>
+        <a href="/">Ir a la app</a>
+        """
+
+    return '''
+    <h2>Importar backup JSON</h2>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="backup" accept=".json" required>
+        <button type="submit">Importar</button>
+    </form>
+    '''
 
 # ============ DIAGNÓSTICO (TEMPORAL) ============
 @app.route('/admin/status')
