@@ -74,9 +74,9 @@
         <label for="location">📍 Ubicación</label>
         <div style="display:flex;gap:8px;">
           <input type="text" id="location" name="location" class="form-control"
-            placeholder="Usa el buscador para seleccionar..."
+            placeholder="Pulsa Buscar para seleccionar ubicación..."
             maxlength="200" autocomplete="off" value="{{ tortilla.location or '' }}"
-            readonly style="flex:1;background:#1e293b;cursor:default;">
+            style="flex:1;">
           <button type="button" onclick="window.open('{{ url_for('select_location') }}', 'location_search', 'width=600,height=800,scrollbars=yes')"
             style="white-space:nowrap;background:#2563eb;color:white;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:0.95rem;">
             🗺️ Buscar
@@ -119,6 +119,13 @@
 </section>
 
 <script>
+// Función global que llama el popup al confirmar
+function receiveLocation(name, address, lat, lon) {
+    document.getElementById('location').value = name + (address && address !== 'Dirección no disponible' ? ' — ' + address : '');
+    document.getElementById('latitude').value = lat;
+    document.getElementById('longitude').value = lon;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const commentEl = document.getElementById('comment');
     const saborEl   = document.getElementById('sabor');

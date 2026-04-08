@@ -46,12 +46,6 @@
         }
 
         /* ============ BUSCADOR ============ */
-        .search-container {
-            padding: 20px;
-            background: #1e293b;
-            border-bottom: 1px solid #334155;
-        }
-
         .search-box {
             display: flex;
             gap: 10px;
@@ -465,24 +459,24 @@
 
         function confirmLocation() {
             if (!selectedLocation) {
-                alert('Por favor, selecciona una ubicación');
+                alert('Por favor, selecciona una ubicación primero');
                 return;
             }
-            if (window.opener && !window.opener.closed) {
-                const doc = window.opener.document;
-                const locationInput = doc.getElementById('location');
-                const latInput = doc.getElementById('latitude');
-                const lngInput = doc.getElementById('longitude');
-                if (locationInput) {
-                    locationInput.value = selectedLocation.address !== 'Dirección no disponible'
-                        ? selectedLocation.name + ' — ' + selectedLocation.address
-                        : selectedLocation.name;
-                    locationInput.dispatchEvent(new Event('change', { bubbles: true }));
+            try {
+                if (window.opener && !window.opener.closed && typeof window.opener.receiveLocation === 'function') {
+                    window.opener.receiveLocation(
+                        selectedLocation.name,
+                        selectedLocation.address,
+                        selectedLocation.lat,
+                        selectedLocation.lon
+                    );
+                    window.close();
+                } else {
+                    alert('Error: no se pudo comunicar con la ventana principal. Cierra esta ventana y vuelve a intentarlo.');
                 }
-                if (latInput) latInput.value = selectedLocation.lat;
-                if (lngInput) lngInput.value = selectedLocation.lon;
+            } catch(e) {
+                alert('Error al guardar la ubicación: ' + e.message);
             }
-            setTimeout(() => window.close(), 500);
         }
 
         document.addEventListener('DOMContentLoaded', function() {

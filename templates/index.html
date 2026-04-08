@@ -232,11 +232,10 @@
             id="location"
             name="location"
             class="form-control"
-            placeholder="Usa el buscador para seleccionar..."
+            placeholder="Pulsa Buscar para seleccionar ubicación..."
             maxlength="200"
             autocomplete="off"
-            readonly
-            style="flex:1;background:#1e293b;cursor:default;">
+            style="flex:1;">
           <button type="button" onclick="openLocationSearch()"
             style="white-space:nowrap;background:#2563eb;color:white;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:0.95rem;">
             🗺️ Buscar
@@ -288,7 +287,14 @@
 <script>
 // ============ ABRIR BUSCADOR DE UBICACIÓN ============
 function openLocationSearch() {
-    window.open("{{ url_for('select_location') }}", "location_search", "width=600,height=800,scrollbars=yes");
+    window.open("{{ url_for('select_location') }}", "location_search", "width=620,height=750,scrollbars=yes");
+}
+
+// Función global que llama el popup al confirmar
+function receiveLocation(name, address, lat, lon) {
+    document.getElementById('location').value = name + (address && address !== 'Dirección no disponible' ? ' — ' + address : '');
+    document.getElementById('latitude').value = lat;
+    document.getElementById('longitude').value = lon;
 }
 
 // ============ FUNCIÓN DE LIKE (AJAX) ============
