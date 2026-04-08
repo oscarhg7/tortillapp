@@ -366,13 +366,12 @@
             const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=es&addressdetails=1`;
             const res = await fetch(url, { headers: { 'Accept-Language': 'es' } });
             const data = await res.json();
-            return data.map(r => ({
-                name: r.display_name.split(',')[0],
-                address: r.display_name,
-                lat: parseFloat(r.lat),
-                lon: parseFloat(r.lon),
-                type: 'direccion'
-            }));
+            return data.map(r => {
+                const street = r.display_name.split(',')[0];
+                const city = r.address?.city || r.address?.town || r.address?.village || r.address?.municipality || '';
+                const name = city ? `${street} (${city})` : street;
+                return { name, address: r.display_name, lat: parseFloat(r.lat), lon: parseFloat(r.lon), type: 'direccion' };
+            });
         }
 
         async function searchOverpass(query) {
