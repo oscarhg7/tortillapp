@@ -352,111 +352,143 @@
         let map;
         let marker;
         let selectedLocation = null;
+        let allResults = [];
 
-        /**
-         * Inicializa el mapa
-         */
         function initMap() {
             map = L.map('map').setView([40.4168, -3.7038], 5);
-            
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 19
             }).addTo(map);
         }
 
-        /**
-         * Busca ubicaciones por texto
-         */
+        async function searchNominatim(query) {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=es&addressdetails=1`;
+            const res = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+            const data = await res.json();
+            return data.map(r => ({
+                name: r.display_name.split(',')[0],
+                address: r.display_name,
+                lat: parseFloat(r.lat),
+                lon: parseFloat(r.lon),
+                type: 'direccion'
+            }));
+        }
+
+        async function searchOverpass(query) {
+            // Escapa caracteres especiales de regex
+            const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            // Bbox España
+            const overpassQuery = `
+                [out:json][timeout:20][bbox:35.9,-9.4,43.9,4.4];
+                (
+                  node["name"~"${escaped}",i]["amenity"~"bar|cafe|restaurant|pub|fast_food|food_court|biergarten"];
+                  way["name"~"${escaped}",i]["amenity"~"bar|cafe|restaurant|pub|fast_food|food_court|biergarten"];
+                );
+                out center 20;
+            `;
+            const res = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: overpassQuery
+            });
+            const data = await res.json();
+            return data.elements.map(el => {
+                const lat = el.lat ?? el.center?.lat;
+                const lon = el.lon ?? el.center?.lon;
+                const amenityLabels = {
+                    bar: 'Bar', cafe: 'Cafetería', restaurant: 'Restaurante',
+                    pub: 'Pub', fast_food: 'Comida rápida', food_court: 'Patio de comidas', biergarten: 'Cervecería'
+                };
+                const tipo = amenityLabels[el.tags?.amenity] || 'Negocio';
+                const addr = [el.tags?.['addr:street'], el.tags?.['addr:housenumber'], el.tags?.['addr:city']]
+                    .filter(Boolean).join(', ');
+                return {
+                    name: el.tags?.name || 'Sin nombre',
+                    address: addr || 'Dirección no disponible',
+                    lat, lon,
+                    type: tipo
+                };
+            }).filter(r => r.lat && r.lon);
+        }
+
         async function searchLocation() {
             const query = document.getElementById('searchInput').value.trim();
-            
             if (!query) {
-                showResults('<div class="no-results"><div class="no-results-icon">🔍</div><p>Escribe una dirección para buscar</p></div>');
+                showResults('<div class="no-results"><div class="no-results-icon">🔍</div><p>Escribe el nombre de un bar o dirección</p></div>');
                 return;
             }
 
-            showResults('<div class="loading"><div class="spinner"></div><p>Buscando...</p></div>');
+            showResults('<div class="loading"><div class="spinner"></div><p>Buscando bares y direcciones...</p></div>');
 
-            try {
-                const response = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=10&countrycodes=es`
-                );
-                const results = await response.json();
+            const [overpassRes, nominatimRes] = await Promise.allSettled([
+                searchOverpass(query),
+                searchNominatim(query)
+            ]);
 
-                if (results.length === 0) {
-                    showResults('<div class="no-results"><div class="no-results-icon">😕</div><p>No se encontraron resultados</p></div>');
-                    return;
-                }
+            const pois = overpassRes.status === 'fulfilled' ? overpassRes.value : [];
+            const addresses = nominatimRes.status === 'fulfilled' ? nominatimRes.value : [];
 
-                let html = '';
-                results.forEach((result, index) => {
-                    html += `
-                        <div class="result-item" onclick="selectLocation(${index}, '${result.display_name.replace(/'/g, "\\'")}', ${result.lat}, ${result.lon})">
-                            <div class="result-name">${result.display_name.split(',')[0]}</div>
-                            <div class="result-address">${result.display_name}</div>
-                            <div class="result-coords">📍 ${parseFloat(result.lat).toFixed(6)}, ${parseFloat(result.lon).toFixed(6)}</div>
-                        </div>
-                    `;
-                });
+            allResults = [...pois, ...addresses];
 
-                showResults(html);
-            } catch (error) {
-                console.error('Error en búsqueda:', error);
-                showResults('<div class="no-results"><div class="no-results-icon">⚠️</div><p>Error al buscar. Inténtalo de nuevo.</p></div>');
+            if (allResults.length === 0) {
+                showResults('<div class="no-results"><div class="no-results-icon">😕</div><p>No se encontraron resultados. Prueba con otro nombre o ciudad.</p></div>');
+                return;
             }
+
+            let html = '';
+            if (pois.length > 0) {
+                html += `<p style="color:#94a3b8;font-size:0.85rem;margin-bottom:8px;">🍽️ Bares y restaurantes (${pois.length})</p>`;
+                pois.forEach((r, i) => { html += resultHtml(i, r); });
+            }
+            if (addresses.length > 0) {
+                html += `<p style="color:#94a3b8;font-size:0.85rem;margin:16px 0 8px;">📍 Direcciones (${addresses.length})</p>`;
+                addresses.forEach((r, i) => { html += resultHtml(pois.length + i, r); });
+            }
+
+            showResults(html);
         }
 
-        /**
-         * Muestra los resultados
-         */
+        function resultHtml(index, r) {
+            const nameSafe = r.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const addrSafe = r.address.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            return `
+                <div class="result-item" onclick="selectLocation(${index}, '${nameSafe}', '${addrSafe}', ${r.lat}, ${r.lon})">
+                    <div class="result-name">${r.name} <small style="color:#64748b;font-weight:400;">${r.type}</small></div>
+                    <div class="result-address">${r.address}</div>
+                    <div class="result-coords">📍 ${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}</div>
+                </div>
+            `;
+        }
+
         function showResults(html) {
             document.getElementById('results').innerHTML = html;
         }
 
-        /**
-         * Selecciona una ubicación del resultado
-         */
-        function selectLocation(index, name, lat, lon) {
-            selectedLocation = {
-                name: name,
-                lat: parseFloat(lat),
-                lon: parseFloat(lon),
-                coords: `${lat},${lon}`
-            };
+        function selectLocation(index, name, address, lat, lon) {
+            selectedLocation = { name, address, lat, lon, coords: `${lat},${lon}` };
 
-            // Actualizar mapa
             if (marker) {
                 marker.setLatLng([lat, lon]);
             } else {
                 marker = L.marker([lat, lon]).addTo(map);
             }
-            map.setView([lat, lon], 13);
+            map.setView([lat, lon], 16);
 
-            // Mostrar información seleccionada
-            document.getElementById('selectedName').textContent = `📌 ${name.split(',')[0]}`;
-            document.getElementById('selectedAddress').textContent = `${name}`;
+            document.getElementById('selectedName').textContent = `📌 ${name}`;
+            document.getElementById('selectedAddress').textContent = address;
             document.getElementById('selectedCoords').textContent = `${lat}, ${lon}`;
             document.getElementById('selectedInfo').classList.add('active');
 
-            // Resaltar resultado seleccionado
             document.querySelectorAll('.result-item').forEach((el, i) => {
                 el.classList.toggle('selected', i === index);
             });
-
-            console.log('Ubicación seleccionada:', selectedLocation);
         }
 
-        /**
-         * Confirma la ubicación y cierra la ventana
-         */
         function confirmLocation() {
             if (!selectedLocation) {
                 alert('Por favor, selecciona una ubicación');
                 return;
             }
-
-            // Enviar coordenadas a la ventana padre
             if (window.opener && !window.opener.closed) {
                 const input = window.opener.document.getElementById('location');
                 if (input) {
@@ -464,28 +496,16 @@
                     input.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             }
-
-            // Cerrar ventana
             setTimeout(() => window.close(), 500);
         }
 
-        /**
-         * Permite buscar con Enter
-         */
         document.addEventListener('DOMContentLoaded', function() {
             initMap();
-            
             document.getElementById('searchInput').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    searchLocation();
-                }
+                if (e.key === 'Enter') searchLocation();
             });
-
-            // Permitir cerrar con ESC
             document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    window.close();
-                }
+                if (e.key === 'Escape') window.close();
             });
         });
     </script>
