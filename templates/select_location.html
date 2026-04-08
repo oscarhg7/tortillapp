@@ -448,15 +448,19 @@
         }
 
         function resultHtml(index, r) {
-            const nameSafe = r.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-            const addrSafe = r.address.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             return `
-                <div class="result-item" onclick="selectLocation(${index}, '${nameSafe}', '${addrSafe}', ${r.lat}, ${r.lon})">
+                <div class="result-item" data-index="${index}" onclick="selectByIndex(${index})">
                     <div class="result-name">${r.name} <small style="color:#64748b;font-weight:400;">${r.type}</small></div>
                     <div class="result-address">${r.address}</div>
                     <div class="result-coords">📍 ${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}</div>
                 </div>
             `;
+        }
+
+        function selectByIndex(index) {
+            const r = allResults[index];
+            if (!r) return;
+            selectLocation(index, r.name, r.address, r.lat, r.lon);
         }
 
         function showResults(html) {

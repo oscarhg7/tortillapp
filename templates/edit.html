@@ -72,13 +72,13 @@
       <!-- Ubicación -->
       <div class="form-group">
         <label for="location">📍 Ubicación</label>
-        <div style="display:flex;gap:8px;align-items:flex-start;">
+        <div style="display:flex;gap:8px;">
           <input type="text" id="location" name="location" class="form-control"
-            placeholder="Escribe o usa el buscador..."
+            placeholder="Usa el buscador para seleccionar..."
             maxlength="200" autocomplete="off" value="{{ tortilla.location or '' }}"
-            style="flex:1;">
+            readonly style="flex:1;background:#1e293b;cursor:default;">
           <button type="button" onclick="window.open('{{ url_for('select_location') }}', 'location_search', 'width=600,height=800,scrollbars=yes')"
-            class="btn" style="white-space:nowrap;background:#2563eb;color:white;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;">
+            style="white-space:nowrap;background:#2563eb;color:white;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:0.95rem;">
             🗺️ Buscar
           </button>
         </div>

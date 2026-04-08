@@ -226,16 +226,21 @@
       <!-- Ubicación con autocomplete -->
       <div class="form-group">
         <label for="location">📍 Ubicación</label>
-        <div class="location-autocomplete">
-          <input 
-            type="text" 
-            id="location" 
-            name="location" 
-            class="form-control" 
-            placeholder="Escribe una calle, ciudad o zona... Ej: Calle Gran Vía 45, Madrid"
+        <div style="display:flex;gap:8px;">
+          <input
+            type="text"
+            id="location"
+            name="location"
+            class="form-control"
+            placeholder="Usa el buscador para seleccionar..."
             maxlength="200"
-            autocomplete="off">
-          <div id="location-suggestions" class="location-suggestions"></div>
+            autocomplete="off"
+            readonly
+            style="flex:1;background:#1e293b;cursor:default;">
+          <button type="button" onclick="openLocationSearch()"
+            style="white-space:nowrap;background:#2563eb;color:white;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:0.95rem;">
+            🗺️ Buscar
+          </button>
         </div>
         <small class="form-help">Dirección donde probaste la tortilla (opcional)</small>
       </div>
